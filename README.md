@@ -36,6 +36,7 @@ const LoginForm = () => {
       { /* Decompose token into child tokens */ }
       <TextField token={loginToken.username} />
       <TextField token={loginToken.password} />
+      <button onClick={handleLogin}>Login</button>
     </div>
   );
 };
