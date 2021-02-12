@@ -9,20 +9,20 @@ import {
 
 const _schema = Symbol('schema');
 
-export interface FormSchema<TState> {
+export interface Schema<TState> {
   readonly [_schema]: SchemaOf<TState>;
   [_childFeatures]?: DeclareChildFeatures<
     NoFeature,
     'schema',
     {
-      [P in keyof NonNullable<TState>]-?: FormSchema<NonNullable<TState>[P]>;
+      [P in keyof NonNullable<TState>]-?: Schema<NonNullable<TState>[P]>;
     }
   >;
 }
 
-export function addFormSchema<TState>(
+export function addSchema<TState>(
   schema: SchemaOf<TState>
-): TokenExtension<NoFeature, FormSchema<TState>> {
+): TokenExtension<NoFeature, Schema<TState>> {
   return {
     extend: {
       [_schema]: schema,
@@ -36,7 +36,7 @@ export function addFormSchema<TState>(
   };
 }
 
-export function getTokenSchema<T>(token: FormSchema<T>): SchemaOf<T> {
+export function getTokenSchema<T>(token: Schema<T>): SchemaOf<T> {
   return token[_schema];
 }
 
@@ -56,7 +56,7 @@ export interface SchemaInfo {
 ////////////////
 // React API
 ////////////////
-export function useTokenSchemaInfo(token: FormSchema<unknown>): SchemaInfo {
+export function useTokenSchemaInfo(token: Schema<unknown>): SchemaInfo {
   const schemaDescription = useMemo(() => {
     return token[_schema]?.describe();
   }, [token]);

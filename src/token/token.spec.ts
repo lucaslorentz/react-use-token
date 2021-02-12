@@ -34,7 +34,6 @@ describe('token', () => {
 const _isExtended = Symbol('test');
 interface TestFeature {
   [_isExtended]: true;
-
   [_childFeatures]?: DeclareChildFeatures<
     NoFeature,
     'test',

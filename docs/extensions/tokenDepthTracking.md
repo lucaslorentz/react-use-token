@@ -1,8 +1,6 @@
 # Extensions
 
-## Token depth tracking extension
-
-Token depth tracking extension:
+## Token depth tracking
 
 ```ts
 // Create symbols to store hidden data inside the token that only this extension is able to access

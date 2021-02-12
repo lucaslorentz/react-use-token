@@ -20,7 +20,7 @@
     "analyze": "size-limit --why"
   },
   "peerDependencies": {
-    "react": ">=16",
+    "react": "^16.8.0 || ^17.0.0",
     "yup": "^0.32.8"
   },
   "husky": {
@@ -54,11 +54,11 @@
   "devDependencies": {
     "@size-limit/preset-small-lib": "^4.9.2",
     "@testing-library/react-hooks": "^5.0.3",
-    "@types/react": "^17.0.1",
-    "@types/react-dom": "^17.0.0",
+    "@types/react": "^16.8.0 || ^17.0.0",
+    "@types/react-dom": "^16.8.0 || ^17.0.0",
     "husky": "^5.0.9",
-    "react": "^17.0.1",
-    "react-dom": "^17.0.1",
+    "react": "^16.8.0 || ^17.0.0",
+    "react-dom": "^16.8.0 || ^17.0.0",
     "size-limit": "^4.9.2",
     "tsdx": "^0.14.1",
     "tslib": "^2.1.0",

@@ -25,7 +25,7 @@ export type ValidationStatus = 'pending' | 'validating' | 'invalid' | 'valid';
 const _validationStatusToken = Symbol('validationStatusToken');
 
 export interface Validated<TState> extends Error<TState> {
-  [_validationStatusToken]: Token<
+  readonly [_validationStatusToken]: Token<
     ReadState<ValidationStatus> & WriteState<ValidationStatus>
   >;
   [_childFeatures]?: DeclareChildFeatures<

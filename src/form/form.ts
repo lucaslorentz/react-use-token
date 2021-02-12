@@ -9,17 +9,15 @@ import {
   _childFeatures,
 } from '../token';
 import { ErrorsState } from './error';
-import { addFormSchema, FormSchema } from './schema';
+import { addSchema, Schema } from './schema';
 import { addValidation, Validated } from './validation';
 
 export interface FormState<TReadState, TWriteState = TReadState>
-  extends Validated<TReadState>,
-    FormSchema<TReadState>,
-    State<TReadState, TWriteState> {
+  extends State<TReadState, TWriteState>,
+    Validated<TReadState>,
+    Schema<TReadState> {
   [_childFeatures]?: DeclareChildFeatures<
-    Validated<TReadState> &
-      FormSchema<TReadState> &
-      State<TReadState, TWriteState>,
+    State<TReadState, TWriteState> & Validated<TReadState> & Schema<TReadState>,
     'formState',
     {
       [P in keyof NonNullable<TReadState> &
@@ -43,7 +41,7 @@ export function addForm<TState>(
   const { schema, debounceValidationMs = 200 } = options;
 
   return token => {
-    const schemaToken = extendToken(token, addFormSchema<TState>(schema));
+    const schemaToken = extendToken(token, addSchema<TState>(schema));
 
     const validationToken = extendToken(
       schemaToken,

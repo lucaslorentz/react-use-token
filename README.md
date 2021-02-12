@@ -11,6 +11,16 @@ Goals:
 - Extensible
 - Strongly typed :heart: Typescript
 
+## Installation
+
+```sh
+# npm
+npm install react-use-token
+
+# yarn
+yarn add react-use-token
+```
+
 ## Tokens
 
 > _A token is an opaque object returned by a hook,_  
@@ -127,7 +137,7 @@ Redeem schema information:
 const { label, required } = useTokenSchemaInfo(formToken.firstName); // label: First name, required: true
 ```
 
-Redeem error:
+Redeem validation error:
 
 ```ts
 const error = useTokenError(formToken.firstName); // First name is required
@@ -139,9 +149,45 @@ Redeem validation status:
 const validationStatus = useTokenValidationStatus(formToken); // 'pending' | 'validating' | 'invalid' | 'valid'
 ```
 
+## Type system
+
+A decomposable token is represented with type `Token<Features>`. Example:
+
+```ts
+token: Token<ReadState<string>>
+```
+
+Multiple features should be combined with typescript intersection type. Example:
+
+```ts
+token: Token<ReadState<string> & WriteState<string>>
+```
+
+Whenever you need the token features but doesn't need to extend or decompose the token, you can omit the `Token<>` and use the feature types directly. Example:
+
+```ts
+token: ReadState<string> & WriteState<String>
+```
+
+Feature types:
+
+| Type | Description | Extends |
+| ---- | ----------- | --- |
+| `ReadState<TState>` | Read state | - |
+| `WriteState<TState>` | Write state | - |
+| `State<TReadState, TWriteState>` | Read and write state | `ReadState<TReadState> & WriteState<TWriteState>` |
+| `State<TState>` | Same as `State<TState, TState>` | - |
+| `Path<TState>` | Retrieve token path with dot notation | - |
+| `Schema<TState>` | Retrieve token schema info | - |
+| `Error<TState>` | Retrieve token validation errors | - |
+| `Validated<TState>` | Retrieve validation status | `Error<TState>` |
+| `FormState<TReadState, TWriteState>` | Form features | `State<TReadState, TWriteState> & Validated<TReadState> & Schema<TReadState>` |
+| `FormState<TState>` | Same as `FormState<TState, TState>` | - |
+
+
 ## Extensibility
 
-All features from this library are just granular and composable token extensions.
+All features from this library are built as composable token extensions.
 
 Instead of using the friendly `useStateToken` or `useFormToken` hooks, you could build a token with the same features using the token extensibility API:
 
@@ -162,6 +208,6 @@ Learn how to create your own extensions by reading our source code:
 - [validation](./src/form/validation.ts)
 - [form](./src/form/form.ts)
 
-Or custom extensions examples:
+Custom extensions examples:
 
 - [Token depth tracking](./docs/extensions/tokenDepthTracking.md)
