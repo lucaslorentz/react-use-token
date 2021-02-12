@@ -112,7 +112,7 @@ Form tokens extends state tokens with validation and useful metadata to build fo
 
 Form tokens are tightly integrated with Yup schemas.
 
-Create form token:
+Usage:
 
 ```ts
 // Declare form schema using yup
@@ -127,7 +127,6 @@ const formToken = useFormToken({ schema });
 // Delegate part of state to other components
 <TextField token={formToken.firstName} />
 <TextField token={formToken.lastName} />
-...
 ```
 [View full example](https://codesandbox.io/s/react-use-tokenform-example-9k9rk?file=/src/App.tsx)
 
