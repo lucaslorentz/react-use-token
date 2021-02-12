@@ -1,4 +1,4 @@
-import { Dispatch, useEffect, useState } from 'react';
+import { Dispatch, useLayoutEffect, useState } from 'react';
 import {
   DeclareChildFeatures,
   NoFeature,
@@ -150,7 +150,7 @@ export function useStateToken<T>(initializer: T | (() => T)): Token<State<T>> {
 
 export function useTokenValue<TState>(token: ReadState<TState>) {
   const [value, setValue] = useState<TState>(getTokenValue(token));
-  useEffect(() => subscribeToTokenValue(token, setValue), [token]);
+  useLayoutEffect(() => subscribeToTokenValue(token, setValue), [token]);
   return value;
 }
 
