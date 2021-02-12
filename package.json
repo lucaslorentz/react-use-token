@@ -1,5 +1,5 @@
 {
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
@@ -40,6 +40,12 @@
     "type": "git",
     "url": "https://github.com/lucaslorentz/react-use-token"
   },
+  "keywords": [
+    "react",
+    "hook",
+    "state",
+    "token"
+  ],
   "module": "dist/react-use-token.esm.js",
   "size-limit": [
     {
