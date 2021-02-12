@@ -124,6 +124,10 @@ const schema = object({
 // Create form token
 const formToken = useFormToken({ schema });
 ...
+// Delegate part of state to other components
+<TextField token={formToken.firstName} />
+<TextField token={formToken.lastName} />
+...
 ```
 [View full example](https://codesandbox.io/s/react-use-tokenform-example-9k9rk?file=/src/App.tsx)
 
