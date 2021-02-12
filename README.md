@@ -131,6 +131,8 @@ const schema = object({
 const formToken = useFormToken({ schema });
 ```
 
+**All state tokens hooks/functions are also available in form tokens.** 
+
 Redeem schema information:
 
 ```ts
@@ -168,6 +170,8 @@ Whenever you need the token features but doesn't need to extend or decompose the
 ```ts
 token: ReadState<string> & WriteState<String>
 ```
+
+Keep in mind that `Token<ReadState<string>>` is assignable to `ReadState<string>`, but not vice versa.
 
 Feature types:
 
