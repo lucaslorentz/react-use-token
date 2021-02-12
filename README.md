@@ -51,7 +51,7 @@ const LoginForm = () => {
   );
 };
 
-const TextField = ({ token: Token<State<string>> }) => {
+const TextField = ({ token }: { token: Token<State<string>> }) => {
   // Redeem state from token
   const [value, setValue] = useTokenState(token);
 
@@ -115,21 +115,17 @@ Form tokens are tightly integrated with Yup schemas.
 Create form token:
 
 ```ts
-// Create schema
+// Declare form schema using yup
 const schema = object({
-  firstName: string()
-    .label('First name')
-    .required()
-    .default(''),
-  lastName: string()
-    .label('Last name')
-    .required()
-    .default(''),
+  firstName: string().label("First name").required(),
+  lastName: string().label("Last name").required()
 });
-
-// Create tokens
+...
+// Create form token
 const formToken = useFormToken({ schema });
+...
 ```
+[View full example](https://codesandbox.io/s/react-use-tokenform-example-9k9rk?file=/src/App.tsx)
 
 **All state tokens hooks/functions are also available in form tokens.** 
 
