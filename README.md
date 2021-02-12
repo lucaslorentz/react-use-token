@@ -175,13 +175,13 @@ Feature types:
 | ---- | ----------- | --- |
 | `ReadState<TState>` | Read state | - |
 | `WriteState<TState>` | Write state | - |
-| `State<TReadState, TWriteState>` | Read and write state | `ReadState<TReadState> & WriteState<TWriteState>` |
+| `State<TReadState, TWriteState>` | Read and write state | `ReadState<TReadState>`<br />`WriteState<TWriteState>` |
 | `State<TState>` | Same as `State<TState, TState>` | - |
 | `Path<TState>` | Retrieve token path with dot notation | - |
 | `Schema<TState>` | Retrieve token schema info | - |
 | `Error<TState>` | Retrieve token validation errors | - |
 | `Validated<TState>` | Retrieve validation status | `Error<TState>` |
-| `FormState<TReadState, TWriteState>` | Form features | `State<TReadState, TWriteState> & Validated<TReadState> & Schema<TReadState>` |
+| `FormState<TReadState, TWriteState>` | Form features | `State<TReadState, TWriteState>`<br />`Validated<TReadState>`<br />`Schema<TReadState>` |
 | `FormState<TState>` | Same as `FormState<TState, TState>` | - |
 
 
