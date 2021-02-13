@@ -1,10 +1,7 @@
 # react-use-token
 
-Enhanced react state hooks.
-
-Goals:
-
-- Simple API focused on react hooks
+Enhanced react state hooks:
+- Simple react hooks API
 - Easy delegation of part of state to other components
 - Granular state observability, only re-renders affected components
 - Immutable state
@@ -21,92 +18,75 @@ npm install react-use-token
 yarn add react-use-token
 ```
 
-## Tokens
+## Problem
 
-> _A token is an opaque object returned by a hook,_  
-> _which can be decomposed into child tokens,_  
-> _and can be used to redeem hook functionality._
+React state hooks problems:
+- It couples the component that invokes the hook to the state, re-rendering it every time the state changes
+- Lot of boilerplate code to delegate part of the state to other components
 
-It's much simpler to understand with code:
+[View in code sandbox](https://codesandbox.io/s/cat-vs-dog-react-u92ot?file=/src/App.tsx)
 
-```ts
-const LoginForm = () => {
-  // Create a state token
-  const loginToken = useStateToken(() => ({
-    username: '',
-    password: ''
-  }));
+## Solution
 
-  const handleLogin = useCallback(() => {
-    console.log(getTokenValue(loginToken));
-  }, [loginToken]);
+- Create state hooks that returns token that can be used later to redeem hook state
+- Allow tokens to be decomposed into child tokens to delegate part of the state
+- Strongly type tokens so you know what's the type of the state the token represents
 
-  return (
-    <div>
-      { /* Decompose token into child tokens */ }
-      <TextField token={loginToken.username} />
-      <TextField token={loginToken.password} />
-      <button onClick={handleLogin}>Login</button>
-    </div>
-  );
-};
+[View in code sandbox](https://codesandbox.io/s/cat-vs-dog-react-use-token-jdjs9?file=/src/App.tsx)
 
-const TextField = ({ token }: { token: Token<State<string>> }) => {
-  // Redeem state from token
-  const [value, setValue] = useTokenState(token);
+As you can see in code sandbox example. Only required components re-render, and it's much simpler to delegate part of the state to other componentes.
 
-  // Manipulate state as usual
-  ...
-};
-```
+## State tokens API
 
-## State token
-
-Create state token from value:
+Create a state token:
 
 ```ts
-const stateToken = useStateToken(42);
+const stateToken = useStateToken({ firstName: '',  lastName: '' });
 ```
 
 Create state token from value initializer.:
 
 ```ts
-const stateToken = useStateToken(() => 42);
+const stateToken = useStateToken(() => ({ firstName: '',  lastName: '' })); //Type: Token<State<{ firstName: string, lastName: string }>>
+```
+
+Decompose state token:
+```ts
+const firsNameToken = stateToken.firstName; // Type: Token<State<string>>
 ```
 
 Redeem token value:
 
 ```ts
-const value = useTokenValue(stateToken);
+const value = useTokenValue(firsNameToken); // Type: string
 ```
 
 Redeem token setter:
 
 ```ts
-const setValue = useTokenSetter(stateToken);
-
+const setValue = useTokenSetter(firsNameToken); // Type: (v: string) => void
 setValue(10);
 ```
 
 Redeem token state (value + setter):
 
 ```ts
-const [value, setValue] = useTokenState(stateToken);
+const [value, setValue] = useTokenState(firsNameToken); // Type: [string, (v: string) => void]
 ```
 
 Get value without hooks (use it inside effects or callbacks):
 
 ```ts
-const value = getTokenValue(stateToken);
+const value = getTokenValue(firsNameToken); // Type: string
 ```
 
 Set value without hooks (use it anywhere):
 
 ```ts
-setTokenValue(stateToken, 10);
+setTokenValue(firsNameToken, 10);
 ```
 
-## Form token
+## Form tokens API
 
 Form tokens extends state tokens with validation and useful metadata to build forms.
 
@@ -128,7 +108,7 @@ const formToken = useFormToken({ schema });
 <TextField token={formToken.firstName} />
 <TextField token={formToken.lastName} />
 ```
-[View full example](https://codesandbox.io/s/react-use-tokenform-example-9k9rk?file=/src/App.tsx)
+[View in code sandbox](https://codesandbox.io/s/react-use-tokenform-example-9k9rk?file=/src/App.tsx)
 
 **All state tokens hooks/functions are also available in form tokens.** 
 
@@ -141,16 +121,16 @@ const { label, required } = useTokenSchemaInfo(formToken.firstName); // label: F
 Redeem validation error:
 
 ```ts
-const error = useTokenError(formToken.firstName); // First name is required
+const error = useTokenError(formToken.firstName); // Returns: Name is required 
 ```
 
 Redeem validation status:
 
 ```ts
-const validationStatus = useTokenValidationStatus(formToken); // 'pending' | 'validating' | 'invalid' | 'valid'
+const validationStatus = useTokenValidationStatus(formToken); // Type: 'pending' | 'validating' | 'invalid' | 'valid'
 ```
 
-## Type system
+## Types guide
 
 A decomposable token is represented with type `Token<Features>`. Example:
 
@@ -186,7 +166,6 @@ Feature types:
 | `Validated<TState>` | Retrieve validation status | `Error<TState>` |
 | `FormState<TReadState, TWriteState>` | Form features | `State<TReadState, TWriteState>`<br />`Validated<TReadState>`<br />`Schema<TReadState>` |
 | `FormState<TState>` | Same as `FormState<TState, TState>` | - |
-
 
 ## Extensibility
 
