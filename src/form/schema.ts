@@ -1,19 +1,20 @@
 import { useMemo } from 'react';
 import { reach, SchemaOf } from 'yup';
 import {
-  DeclareChildFeatures,
+  FeatureMetadata,
   NoFeature,
   TokenExtension,
-  _childFeatures,
+  _metadata,
 } from '../token';
 
 const _schema = Symbol('schema');
 
 export interface Schema<TState> {
   readonly [_schema]: SchemaOf<TState>;
-  [_childFeatures]?: DeclareChildFeatures<
-    NoFeature,
+  [_metadata]?: FeatureMetadata<
     'schema',
+    Schema<TState>,
+    NoFeature,
     {
       [P in keyof NonNullable<TState>]-?: Schema<NonNullable<TState>[P]>;
     }

@@ -1,12 +1,12 @@
 import { SchemaOf, ValidationError } from 'yup';
 import { State, useStateToken } from '../state';
 import {
-  DeclareChildFeatures,
+  FeatureMetadata,
   extendToken,
   Token,
   TokenExtension,
   useTokenExtension,
-  _childFeatures,
+  _metadata,
 } from '../token';
 import { ErrorsState } from './error';
 import { addSchema, Schema } from './schema';
@@ -16,9 +16,10 @@ export interface FormState<TReadState, TWriteState = TReadState>
   extends State<TReadState, TWriteState>,
     Validated<TReadState>,
     Schema<TReadState> {
-  [_childFeatures]?: DeclareChildFeatures<
-    State<TReadState, TWriteState> & Validated<TReadState> & Schema<TReadState>,
+  [_metadata]?: FeatureMetadata<
     'formState',
+    FormState<TReadState, TWriteState>,
+    State<TReadState, TWriteState> & Validated<TReadState> & Schema<TReadState>,
     {
       [P in keyof NonNullable<TReadState> &
         keyof NonNullable<TWriteState>]-?: FormState<
@@ -51,7 +52,7 @@ export function addForm<TState>(
       })
     );
 
-    return validationToken as Token<FormState<TState>>;
+    return (validationToken as unknown) as Token<FormState<TState>>;
   };
 }
 

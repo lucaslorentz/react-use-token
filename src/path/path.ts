@@ -1,17 +1,18 @@
 import {
-  DeclareChildFeatures,
+  FeatureMetadata,
   NoFeature,
   TokenExtension,
-  _childFeatures,
+  _metadata,
 } from '../token';
 
 const _path = Symbol('path');
 
 export interface Path<TState = any> {
   readonly [_path]: string;
-  [_childFeatures]?: DeclareChildFeatures<
-    NoFeature,
+  [_metadata]?: FeatureMetadata<
     'path',
+    Path<TState>,
+    NoFeature,
     {
       [P in keyof NonNullable<TState>]-?: Path<NonNullable<TState>[P]>;
     }

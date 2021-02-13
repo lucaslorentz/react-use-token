@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 const _children = Symbol('children');
 const _childrenInterceptor = Symbol('childrenInterceptor');
-export const _childFeatures = Symbol('childFeatures');
+export const _metadata = Symbol('metadata');
 const _proxy = Symbol('proxy');
 const _target = Symbol('target');
 
@@ -11,15 +11,7 @@ interface TokenBase {
   [_childrenInterceptor]: ChildTokenInterceptor;
 }
 
-export interface NoFeature {
-  [_childFeatures]?: DeclareChildFeatures<
-    undefined,
-    'noFeature',
-    {
-      [P in PropertyKey]: NoFeature;
-    }
-  >;
-}
+export interface NoFeature {}
 
 export type Token<Features> = TokenBase &
   Features &
@@ -66,25 +58,27 @@ const rootToken = toProxy<NoFeature>({
   [_childrenInterceptor]: token => token,
 });
 
-export function createToken<Features = NoFeature>(
-  extension?: TokenExtension<NoFeature, Features>
-): Token<Features> {
+export function createToken(): Token<NoFeature>;
+export function createToken<Feature>(
+  extension?: TokenExtension<NoFeature, Feature>
+): Token<CleanupFeatures<NoFeature & Feature>>;
+export function createToken<Feature>(
+  extension?: TokenExtension<NoFeature, Feature>
+): Token<NoFeature> | Token<CleanupFeatures<NoFeature & Feature>> {
   if (!extension) {
-    return rootToken as Token<Features>;
+    return rootToken;
   }
-  return (extendToken(rootToken, extension) as unknown) as Token<Features>;
+  return extendToken(rootToken, extension);
 }
 
 export function extendToken<
   CurrentFeatures extends BaseFeature,
-  NewFature,
-  BaseFeature = CurrentFeatures
+  BaseFeature,
+  NewFature
 >(
   token: Token<CurrentFeatures>,
   extension: TokenExtension<BaseFeature, NewFature>
-): Token<
-  NewFature extends CurrentFeatures ? NewFature : CurrentFeatures & NewFature
-> {
+): Token<CleanupFeatures<CurrentFeatures & NewFature>> {
   if (typeof extension === 'function') {
     return extension(token) as any;
   }
@@ -148,41 +142,74 @@ export type TokenExtension<BaseFeatures, NewFeatures> =
     }
   | ((
       token: Token<BaseFeatures>
-    ) => Token<
-      NewFeatures extends BaseFeatures
-        ? NewFeatures
-        : BaseFeatures & NewFeatures
-    >);
+    ) => Token<CleanupFeatures<BaseFeatures & NewFeatures>>);
+
+export type FeatureMetadata<
+  UniqueIdentifier extends string,
+  Self,
+  BaseFeatures,
+  ChildFeatures
+> = {
+  self: {
+    [P in GetIdentifiers<BaseFeatures>]: never;
+  } &
+    { [U in UniqueIdentifier]: ValueHolder<Self> };
+  childFeatures: {
+    [P in GetIdentifiers<BaseFeatures>]: never;
+  } &
+    { [U in UniqueIdentifier]: ValueHolder<ChildFeatures> };
+};
+
+export type GetIdentifiers<Features> = Features extends {
+  [K in typeof _metadata]?: {
+    self: infer T;
+  };
+}
+  ? keyof T
+  : never;
+
+export type CleanupFeatures<Features> = UnionToIntersection<
+  Features extends {
+    [C in typeof _metadata]?: {
+      self: {
+        [U in string]: ValueHolder<infer Self>;
+      };
+    };
+  }
+    ? Self
+    : never
+>;
+
+export type ChildProperties<Features> = keyof UnionToIntersection<
+  Features extends {
+    [K in typeof _metadata]?: {
+      childFeatures: {
+        [U in string]: ValueHolder<infer T>;
+      };
+    };
+  }
+    ? T
+    : never
+>;
 
 export type ChildFeatures<
   Features,
   Property extends PropertyKey
-> = UnionToIntersection<
-  Features extends {
-    [C in typeof _childFeatures]?: {
-      [I in string]?: { [P in Property]: infer T };
-    };
-  }
-    ? T
-    : {}
+> = CleanupFeatures<
+  UnionToIntersection<
+    Features extends {
+      [C in typeof _metadata]?: {
+        childFeatures: {
+          [U in string]: ValueHolder<{ [P in Property]: infer T }>;
+        };
+      };
+    }
+      ? T
+      : {}
+  >
 >;
 
-export type ChildProperties<Features> = Features extends {
-  [K in typeof _childFeatures]?: { [i in string]?: infer T };
-}
-  ? keyof NonNullable<T>
-  : never;
-
-export type DeclareChildFeatures<
-  OmitFeatures,
-  UniqueIdentifier extends string,
-  ChildFeatures
-> = (OmitFeatures extends { [K in typeof _childFeatures]?: infer T }
-  ? {
-      [P in keyof T]: never;
-    }
-  : {}) &
-  { [P in UniqueIdentifier]?: ChildFeatures };
+interface ValueHolder<_TValue> {}
 
 type ChildTokenInterceptor = (
   token: any,
@@ -200,9 +227,13 @@ type UnionToIntersection<T> = (T extends any
 ////////////////
 // React API
 ////////////////
-export function useToken<Feature = NoFeature>(
+export function useToken(): Token<NoFeature>;
+export function useToken<Feature>(
   extensionFactory?: () => TokenExtension<NoFeature, Feature>
-): Token<Feature> {
+): Token<Feature>;
+export function useToken<Feature>(
+  extensionFactory?: () => TokenExtension<NoFeature, Feature>
+): Token<NoFeature> | Token<CleanupFeatures<NoFeature & Feature>> {
   const [token] = useState(() => {
     return createToken(extensionFactory?.());
   });

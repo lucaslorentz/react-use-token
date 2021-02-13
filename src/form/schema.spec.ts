@@ -1,4 +1,6 @@
+import { expectTypeOf } from 'expect-type';
 import * as yup from 'yup';
+import { SchemaOf } from 'yup';
 import { createToken } from '../token';
 import { addSchema, getTokenSchema } from './schema';
 
@@ -17,5 +19,8 @@ describe('form/schema', () => {
     expect(getTokenSchema(token.children)).toBeDefined();
     expect(getTokenSchema(token.children[0])).toBeDefined();
     expect(getTokenSchema(token.children[0].name)).toBeDefined();
+    expectTypeOf(getTokenSchema(token.children[0].name)).toEqualTypeOf<
+      SchemaOf<string | undefined>
+    >();
   });
 });

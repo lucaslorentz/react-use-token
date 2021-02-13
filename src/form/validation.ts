@@ -10,12 +10,11 @@ import {
 } from '../state';
 import {
   createToken,
-  DeclareChildFeatures,
+  FeatureMetadata,
   extendToken,
-  NoFeature,
   Token,
   TokenExtension,
-  _childFeatures,
+  _metadata,
 } from '../token';
 import { debounce } from '../utils/debounce';
 import { addError, Error, ErrorsState } from './error';
@@ -28,9 +27,10 @@ export interface Validated<TState> extends Error<TState> {
   readonly [_validationStatusToken]: Token<
     ReadState<ValidationStatus> & WriteState<ValidationStatus>
   >;
-  [_childFeatures]?: DeclareChildFeatures<
-    Error<TState>,
+  [_metadata]?: FeatureMetadata<
     'validation',
+    Validated<TState>,
+    Error<TState>,
     {
       [P in keyof NonNullable<TState>]-?: Validated<NonNullable<TState>[P]>;
     }
@@ -103,7 +103,7 @@ export function addValidation<TState>(
         [_validationStatusToken]: validationStatusToken,
       },
       extendChildren: true,
-    } as TokenExtension<NoFeature, Validated<TState>>);
+    } as TokenExtension<Error<TState>, Validated<TState>>);
 
     return tokenWithValidationStatus;
   };

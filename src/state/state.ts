@@ -1,12 +1,12 @@
 import { Dispatch, useLayoutEffect, useState } from 'react';
 import {
-  DeclareChildFeatures,
+  FeatureMetadata,
   NoFeature,
   Token,
   TokenExtension,
   useToken,
   useTokenExtension,
-  _childFeatures,
+  _metadata,
 } from '../token';
 
 const _getValue = Symbol('getValue');
@@ -16,9 +16,10 @@ const _setValue = Symbol('setValue');
 export interface State<TReadState, TWriteState = TReadState>
   extends ReadState<TReadState>,
     WriteState<TWriteState> {
-  [_childFeatures]?: DeclareChildFeatures<
-    ReadState<TReadState> & WriteState<TWriteState>,
+  [_metadata]?: FeatureMetadata<
     'state',
+    State<TReadState, TWriteState>,
+    ReadState<TReadState> & WriteState<TWriteState>,
     {
       [P in keyof NonNullable<TReadState> &
         keyof NonNullable<TWriteState>]-?: State<
@@ -33,9 +34,10 @@ export interface State<TReadState, TWriteState = TReadState>
 export interface ReadState<TState> {
   [_getValue](): TState;
   [_subscribe](listener: TokenValueListener<TState>): Disposer;
-  [_childFeatures]?: DeclareChildFeatures<
-    NoFeature,
+  [_metadata]?: FeatureMetadata<
     'readState',
+    ReadState<TState>,
+    NoFeature,
     {
       [P in keyof NonNullable<TState>]-?: ReadState<
         | NonNullable<TState>[P]
@@ -47,9 +49,10 @@ export interface ReadState<TState> {
 
 export interface WriteState<TState> {
   [_setValue](newValue: TState): void;
-  [_childFeatures]?: DeclareChildFeatures<
-    NoFeature,
+  [_metadata]?: FeatureMetadata<
     'writeState',
+    WriteState<TState>,
+    NoFeature,
     {
       [P in keyof NonNullable<TState>]-?: WriteState<NonNullable<TState>[P]>;
     }

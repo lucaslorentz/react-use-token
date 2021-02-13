@@ -12,9 +12,10 @@ export interface Depth {
   [_depth]: number;
 
   // Declare child features
-  [_childFeatures]?: DeclareChildFeatures<
-    NoFeature, // Features to omit/override
+  [_metadata]?: FeatureMetadata<
     'depth', // Unique identifier
+    Depth, // Self type
+    NoFeature, // Features to hide
     { [P in PropertyKey]: Depth } // Map with all possible child properties and it's feature
   >;
 }
@@ -25,7 +26,7 @@ export function trackDepth(): TokenExtension<NoFeature, Depth> {
     extend: {
       [_depth]: 0,
     },
-    extendChildren: (childToken, parentToken, property) => {
+    extendChildren: (_childToken, parentToken, _property) => {
       return {
         [_depth]: parentToken[_depth] + 1,
       };
@@ -42,11 +43,11 @@ export function getTokenDepth(token: Depth) {
 Now you can use the trackDepth extension with any existing token:
 
 ```ts
-const myToken = useStateToken<MyState>();
-// typeof myToken = Token<State<MyState>>;
+const myToken = useStateToken<any>(null);
+// typeof myToken = Token<State<any>>;
 
 const myToken2 = useTokenExtension(myToken, () => trackDepth());
-// typeof myToken2 = Token<State<MyState> & Depth>;
+// typeof myToken2 = Token<State<any> & Depth>;
 
 const depthRoot = getTokenDepth(myToken2);
 // depthRoot = 0
