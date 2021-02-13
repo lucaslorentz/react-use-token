@@ -28,7 +28,7 @@ React state hooks problems:
 
 ## Solution
 
-- Create state hooks that returns token that can be used later to redeem hook state
+- Create state hooks that returns token that can be used later to redeem state
 - Allow tokens to be decomposed into child tokens to delegate part of the state
 - Strongly type tokens so you know what's the type of the state the token represents
 
@@ -59,14 +59,14 @@ const firsNameToken = stateToken.firstName;
 Redeem token value:
 
 ```ts
-const value = useTokenValue(firsNameToken);
+const value = useTokenValue(stateToken.firstName);
 // typeof value: string
 ```
 
 Redeem token setter:
 
 ```ts
-const setValue = useTokenSetter(firsNameToken);
+const setValue = useTokenSetter(stateToken.firstName);
 // typeof setValue: (v: string) => void
 setValue(10);
 ```
@@ -74,20 +74,30 @@ setValue(10);
 Redeem token state (value + setter):
 
 ```ts
-const [value, setValue] = useTokenState(firsNameToken);
+const [value, setValue] = useTokenState(stateToken.firstName);
 ```
 
 Get value without hooks (use it inside effects or callbacks):
 
 ```ts
-const value = getTokenValue(firsNameToken);
+const value = getTokenValue(stateToken.firstName);
 // typeof value: string
 ```
 
 Set value without hooks (use it anywhere):
 
 ```ts
-setTokenValue(firsNameToken, 10);
+setTokenValue(stateToken.firstName, 10);
+```
+
+Tokens are just a definition of how to get and set state, they can outlive the state value:
+
+```ts
+const token = useStateToken<any>(null);
+useEffect(() => {
+  setTokenValue(token.user.preferences.languages[0], "EN");
+  // token value: { user: { preferences: { languages: ["EN"] } } }
+, []);
 ```
 
 ## Form tokens API
