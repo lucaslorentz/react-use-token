@@ -32,9 +32,7 @@ React state hooks problems:
 - Allow tokens to be decomposed into child tokens to delegate part of the state
 - Strongly type tokens so you know what's the type of the state the token represents
 
-[View in code sandbox](https://codesandbox.io/s/cat-vs-dog-react-use-token-jdjs9?file=/src/App.tsx)
-
-As you can see in code sandbox example. Only required components re-render, and it's much simpler to delegate part of the state to other componentes.
+[View in code sandbox](https://codesandbox.io/s/cat-vs-dog-react-use-token-jdjs9?file=/src/App.tsx). Only required components re-render, and it's much simpler to delegate part of the state to other componentes.
 
 ## State tokens API
 
@@ -42,42 +40,48 @@ Create a state token:
 
 ```ts
 const stateToken = useStateToken({ firstName: '',  lastName: '' });
+// typeof stateToken: Token<State<{ firstName: string, lastName: string }>>
 ```
 
 Create state token from value initializer.:
 
 ```ts
-const stateToken = useStateToken(() => ({ firstName: '',  lastName: '' })); //Type: Token<State<{ firstName: string, lastName: string }>>
+const stateToken = useStateToken(() => ({ firstName: '',  lastName: '' }));
+// typeof stateToken: Token<State<{ firstName: string, lastName: string }>>
 ```
 
 Decompose state token:
 ```ts
-const firsNameToken = stateToken.firstName; // Type: Token<State<string>>
+const firsNameToken = stateToken.firstName;
+// typeof firsNameToken: Token<State<string>>
 ```
 
 Redeem token value:
 
 ```ts
-const value = useTokenValue(firsNameToken); // Type: string
+const value = useTokenValue(firsNameToken);
+// typeof value: string
 ```
 
 Redeem token setter:
 
 ```ts
-const setValue = useTokenSetter(firsNameToken); // Type: (v: string) => void
+const setValue = useTokenSetter(firsNameToken);
+// typeof setValue: (v: string) => void
 setValue(10);
 ```
 
 Redeem token state (value + setter):
 
 ```ts
-const [value, setValue] = useTokenState(firsNameToken); // Type: [string, (v: string) => void]
+const [value, setValue] = useTokenState(firsNameToken);
 ```
 
 Get value without hooks (use it inside effects or callbacks):
 
 ```ts
-const value = getTokenValue(firsNameToken); // Type: string
+const value = getTokenValue(firsNameToken);
+// typeof value: string
 ```
 
 Set value without hooks (use it anywhere):
