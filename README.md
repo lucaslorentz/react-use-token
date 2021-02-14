@@ -28,7 +28,7 @@ React state hooks problems:
 
 ## Solution
 
-- Create state hooks that returns token that can be used later to redeem state
+- Use tokens to decouple the creation of state from it's usage
 - Allow tokens to be decomposed into child tokens to delegate part of the state
 - Strongly type tokens so you know what's the type of the state the token represents
 
