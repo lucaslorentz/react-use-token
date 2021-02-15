@@ -13,11 +13,17 @@ interface TokenBase {
 
 export interface NoFeature {}
 
-export type Token<Features> = TokenBase &
-  Features &
-  {
-    [P in ChildProperties<Features>]: Token<ChildFeatures<Features, P>>;
-  };
+export type PartialToken<Features> = TokenBase &
+  Omit<Features, typeof _metadata>;
+
+export type Token<Features> = PartialToken<Features> &
+  ChildTokensProperties<Features>;
+
+type ChildTokensProperties<Features> = {
+  readonly [k in keyof ChildFeaturesProperties<Features>]: Token<
+    CleanupFeatures<ChildFeaturesProperties<Features>[k]>
+  >;
+};
 
 const positiveIntegerRegex = /^\d+$/;
 
@@ -107,10 +113,16 @@ export function extendToken<
       }) as ChildTokenInterceptor;
     }
   }
-  return toProxy(newToken);
+  return toProxy(newToken) as any;
 }
 
-function toProxy<Features>(token: TokenBase & Features): Token<Features> {
+export function restoreToken<Features>(
+  partialToken: PartialToken<Features>
+): Token<Features> {
+  return toProxy(partialToken);
+}
+
+function toProxy<Features>(token: PartialToken<Features>): Token<Features> {
   if (token.hasOwnProperty(_proxy)) {
     return (token as any)[_proxy];
   }
@@ -124,7 +136,7 @@ function toProxy<Features>(token: TokenBase & Features): Token<Features> {
 }
 
 function getProxyTarget<Features>(
-  tokenProxy: Token<Features>
+  tokenProxy: PartialToken<Features>
 ): TokenBase & Features {
   return (tokenProxy as any)[_target];
 }
@@ -150,17 +162,22 @@ export type FeatureMetadata<
   BaseFeatures,
   ChildFeatures
 > = {
-  self: {
-    [P in GetIdentifiers<BaseFeatures>]: never;
-  } &
-    { [U in UniqueIdentifier]: ValueHolder<Self> };
-  childFeatures: {
-    [P in GetIdentifiers<BaseFeatures>]: never;
-  } &
-    { [U in UniqueIdentifier]: ValueHolder<ChildFeatures> };
+  self: BaseFeatures extends { [K in typeof _metadata]?: { self: infer S } }
+    ? S & { [U in UniqueIdentifier]?: Self }
+    : { [U in UniqueIdentifier]?: Self };
+  baseFeatures: BaseFeatures extends {
+    [K in typeof _metadata]?: { baseFeatures: infer B };
+  }
+    ? B & { [U in UniqueIdentifier]?: BaseFeatures }
+    : { [U in UniqueIdentifier]?: BaseFeatures };
+  childFeatures: BaseFeatures extends {
+    [K in typeof _metadata]?: { childFeatures: infer C };
+  }
+    ? C & { [U in UniqueIdentifier]?: ChildFeatures }
+    : { [U in UniqueIdentifier]?: ChildFeatures };
 };
 
-export type GetIdentifiers<Features> = Features extends {
+type GetIdentifiers<Features> = Features extends {
   [K in typeof _metadata]?: {
     self: infer T;
   };
@@ -168,11 +185,28 @@ export type GetIdentifiers<Features> = Features extends {
   ? keyof T
   : never;
 
-export type CleanupFeatures<Features> = UnionToIntersection<
+type GetNonBaseIdentifiers<Features> = Exclude<
+  GetIdentifiers<Features>,
+  GetIdentifiers<GetBaseFeatures<Features>>
+>;
+
+type GetBaseFeatures<Features> = UnionToIntersection<
+  Features extends {
+    [C in typeof _metadata]?: {
+      baseFeatures: {
+        [U in string]?: infer Base;
+      };
+    };
+  }
+    ? Base
+    : never
+>;
+
+type CleanupFeatures<Features> = UnionToIntersection<
   Features extends {
     [C in typeof _metadata]?: {
       self: {
-        [U in string]: ValueHolder<infer Self>;
+        [U in GetNonBaseIdentifiers<Features>]?: infer Self;
       };
     };
   }
@@ -180,36 +214,17 @@ export type CleanupFeatures<Features> = UnionToIntersection<
     : never
 >;
 
-export type ChildProperties<Features> = keyof UnionToIntersection<
+type ChildFeaturesProperties<Features> = UnionToIntersection<
   Features extends {
     [K in typeof _metadata]?: {
       childFeatures: {
-        [U in string]: ValueHolder<infer T>;
+        [U in string]?: infer T;
       };
     };
   }
     ? T
     : never
 >;
-
-export type ChildFeatures<
-  Features,
-  Property extends PropertyKey
-> = CleanupFeatures<
-  UnionToIntersection<
-    Features extends {
-      [C in typeof _metadata]?: {
-        childFeatures: {
-          [U in string]: ValueHolder<{ [P in Property]: infer T }>;
-        };
-      };
-    }
-      ? T
-      : {}
-  >
->;
-
-interface ValueHolder<_TValue> {}
 
 type ChildTokenInterceptor = (
   token: any,

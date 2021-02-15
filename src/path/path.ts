@@ -3,25 +3,26 @@ import {
   NoFeature,
   TokenExtension,
   _metadata,
+  PartialToken,
 } from '../token';
 
 const _path = Symbol('path');
 
-export interface Path<TState = any> {
+export interface Path {
   readonly [_path]: string;
   [_metadata]?: FeatureMetadata<
     'path',
-    Path<TState>,
+    Path,
     NoFeature,
     {
-      [P in keyof NonNullable<TState>]-?: Path<NonNullable<TState>[P]>;
+      [P in PropertyKey]: Path;
     }
   >;
 }
 
-export function addPath<TState = any>(
+export function addPath(
   initialPath: string = ''
-): TokenExtension<NoFeature, Path<TState>> {
+): TokenExtension<NoFeature, Path> {
   return {
     extend: {
       [_path]: initialPath,
@@ -44,6 +45,6 @@ export function addPath<TState = any>(
   };
 }
 
-export function getTokenPath(token: Path<any>): string {
+export function getTokenPath(token: PartialToken<Path>): string {
   return token[_path];
 }

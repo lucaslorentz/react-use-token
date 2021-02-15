@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react-hooks';
 import { expectTypeOf } from 'expect-type';
-import { Token } from '../token';
+import { PartialToken, Token } from '../token';
 import {
   ReadState,
   useStateToken,
@@ -70,12 +70,28 @@ describe('state', () => {
       >();
     });
 
-    it('state of any should be assignable to other states', () => {
-      expectTypeOf<ReadState<any>>().toMatchTypeOf<ReadState<string>>();
+    it('state of any should not assignable to states of string', () => {
+      expectTypeOf<Token<ReadState<any>>>().not.toMatchTypeOf<
+        Token<ReadState<string>>
+      >();
+    });
+
+    it('state of any should be assignable state of string using partial token', () => {
+      expectTypeOf<Token<ReadState<any>>>().toMatchTypeOf<
+        PartialToken<ReadState<string>>
+      >();
     });
 
     it('state of string should should be assignable to state of any', () => {
-      expectTypeOf<ReadState<string>>().toMatchTypeOf<ReadState<any>>();
+      expectTypeOf<Token<ReadState<string>>>().not.toMatchTypeOf<
+        Token<ReadState<any>>
+      >();
+    });
+
+    it('state of string should should be assignable to state of any using partial token', () => {
+      expectTypeOf<Token<ReadState<string>>>().toMatchTypeOf<
+        PartialToken<ReadState<any>>
+      >();
     });
 
     it('read write token should be assignable to read', () => {

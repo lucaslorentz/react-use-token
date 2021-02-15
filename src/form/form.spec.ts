@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react-hooks';
 import { array, object, string } from 'yup';
-import { getTokenError } from './error';
+import { getTokenErrorMessage } from './error-message';
 import { useFormToken } from './form';
 
 describe('form', () => {
@@ -27,15 +27,15 @@ describe('form', () => {
 
     const formToken = result.current;
 
-    await new Promise(r => setTimeout(r, 0));
+    await new Promise(r => setTimeout(r, 10));
 
-    expect(getTokenError(formToken.firstName)).toBe(
+    expect(getTokenErrorMessage(formToken.firstName)).toBe(
       'First name is a required field'
     );
-    expect(getTokenError(formToken.lastName)).toBe(
+    expect(getTokenErrorMessage(formToken.lastName)).toBe(
       'Last name is a required field'
     );
-    expect(getTokenError(formToken.children[0])).toBe(
+    expect(getTokenErrorMessage(formToken.children[0])).toBe(
       'Child is a required field'
     );
   });

@@ -1,7 +1,7 @@
 import { addPath } from '../path/path';
 import { addState } from '../state';
 import { createToken, extendToken } from '../token';
-import { addError, getTokenError } from './error';
+import { addErrorMessages, getTokenErrorMessage } from './error-message';
 
 describe('form/error', () => {
   const initialErrors = {
@@ -16,12 +16,12 @@ describe('form/error', () => {
 
     var errorToken = extendToken(
       createToken(addPath()),
-      addError({ errorsToken: errorsStateToken })
+      addErrorMessages({ errorsToken: errorsStateToken })
     );
 
-    expect(getTokenError(errorToken.name)).toBe(initialErrors['name']);
+    expect(getTokenErrorMessage(errorToken.name)).toBe(initialErrors['name']);
 
-    expect(getTokenError(errorToken.children[0].name)).toBe(
+    expect(getTokenErrorMessage(errorToken.children[0].name)).toBe(
       initialErrors['children[0].name']
     );
   });

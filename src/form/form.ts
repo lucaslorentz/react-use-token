@@ -1,28 +1,37 @@
 import { SchemaOf, ValidationError } from 'yup';
+import { Path } from '../path';
 import { State, useStateToken } from '../state';
 import {
-  FeatureMetadata,
   extendToken,
+  FeatureMetadata,
   Token,
   TokenExtension,
   useTokenExtension,
   _metadata,
 } from '../token';
-import { ErrorsState } from './error';
+import { NonFunctionProperties } from '../utils/types';
+import { ErrorMessage, ErrorsState } from './error-message';
 import { addSchema, Schema } from './schema';
 import { addValidation, Validated } from './validation';
 
 export interface FormState<TReadState, TWriteState = TReadState>
   extends State<TReadState, TWriteState>,
-    Validated<TReadState>,
+    Path,
+    ErrorMessage,
+    Validated,
     Schema<TReadState> {
   [_metadata]?: FeatureMetadata<
     'formState',
     FormState<TReadState, TWriteState>,
-    State<TReadState, TWriteState> & Validated<TReadState> & Schema<TReadState>,
+    State<TReadState, TWriteState> &
+      Path &
+      ErrorMessage &
+      Validated &
+      Schema<TReadState>,
     {
-      [P in keyof NonNullable<TReadState> &
-        keyof NonNullable<TWriteState>]-?: FormState<
+      [P in keyof NonFunctionProperties<NonNullable<TReadState>> &
+        keyof NonFunctionProperties<NonNullable<TWriteState>> &
+        PropertyKey]-?: FormState<
         | NonNullable<TReadState>[P]
         | (TReadState extends null | undefined ? undefined : never),
         NonNullable<TWriteState>[P]
