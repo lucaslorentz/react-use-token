@@ -14,7 +14,7 @@ describe('form/validation', () => {
               name: 'Name is required',
             };
           },
-          debounceMs: 1
+          debounceMs: 1,
         })
       );
 
@@ -36,7 +36,7 @@ describe('form/validation', () => {
           validator: async (_: any) => {
             return {};
           },
-          debounceMs: 0
+          debounceMs: 0,
         })
       );
 
