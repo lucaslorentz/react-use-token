@@ -29,9 +29,6 @@ describe('form', () => {
 
     await new Promise(r => setTimeout(r, 0));
 
-    console.log(formToken);
-    console.log(formToken.firstName);
-
     expect(getTokenError(formToken.firstName)).toBe(
       'First name is a required field'
     );
