@@ -63,26 +63,15 @@ export type TokenValueListener<TState> = (newValue: TState) => void;
 export type Disposer = () => void;
 
 export function addState<TState>(
-  initializer: TState | (() => TState)
+  initialValue: TState
 ): TokenExtension<NoFeature, State<TState>> {
-  var initialized = false;
-
-  let value: TState | undefined;
-
-  if (typeof initializer !== 'function') {
-    value = initializer;
-    initialized = true;
-  }
+  let value: TState = initialValue;
 
   const subscriptions: TokenValueListener<TState>[] = [];
 
   return {
     extend: {
       [_getValue]: function() {
-        if (!initialized) {
-          initialized = true;
-          value = (initializer as () => TState)();
-        }
         return value!;
       },
       [_setValue]: function(newValue: TState) {
@@ -147,7 +136,13 @@ export function subscribeToTokenValue<TState>(
 ////////////////
 export function useStateToken<T>(initializer: T | (() => T)): Token<State<T>> {
   const token = useToken();
-  const stateToken = useTokenExtension(token, () => addState(initializer));
+  const stateToken = useTokenExtension(token, () => {
+    var initialValue: T =
+      typeof initializer === 'function'
+        ? (initializer as Function)()
+        : initializer;
+    return addState(initialValue);
+  });
   return stateToken;
 }
 

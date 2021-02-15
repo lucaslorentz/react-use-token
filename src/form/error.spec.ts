@@ -6,12 +6,12 @@ import { addError, getTokenError } from './error';
 describe('form/error', () => {
   const initialErrors = {
     name: 'name error',
-    'children.0.name': 'children.0.name error',
+    'children[0].name': 'first child name error',
   };
 
   it('should return errors by field', () => {
     var errorsStateToken = createToken(
-      addState<Record<string, string>>(() => initialErrors)
+      addState<Record<string, string>>(initialErrors)
     );
 
     var errorToken = extendToken(
@@ -22,7 +22,7 @@ describe('form/error', () => {
     expect(getTokenError(errorToken.name)).toBe(initialErrors['name']);
 
     expect(getTokenError(errorToken.children[0].name)).toBe(
-      initialErrors['children.0.name']
+      initialErrors['children[0].name']
     );
   });
 });

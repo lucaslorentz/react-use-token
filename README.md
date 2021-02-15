@@ -174,7 +174,7 @@ Feature types:
 | `WriteState<TState>` | Write state | - |
 | `State<TReadState, TWriteState>` | Read and write state | `ReadState<TReadState>`<br />`WriteState<TWriteState>` |
 | `State<TState>` | Same as `State<TState, TState>` | - |
-| `Path<TState>` | Retrieve token path with dot notation | - |
+| `Path<TState>` | Retrieve token path | - |
 | `Schema<TState>` | Retrieve token schema info | - |
 | `Error<TState>` | Retrieve token validation errors | - |
 | `Validated<TState>` | Retrieve validation status | `Error<TState>` |

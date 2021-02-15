@@ -27,9 +27,15 @@ export function addPath<TState = any>(
       [_path]: initialPath,
     },
     extendChildren: (_, parent, property) => {
-      const childPath = parent[_path]
-        ? `${parent[_path]}.${String(property)}`
-        : String(property);
+      let childPath;
+
+      if (typeof property === 'number') {
+        childPath = `${parent[_path]}[${String(property)}]`;
+      } else {
+        childPath = parent[_path]
+          ? `${parent[_path]}.${String(property)}`
+          : String(property);
+      }
 
       return {
         [_path]: childPath,

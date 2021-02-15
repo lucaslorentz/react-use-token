@@ -10,8 +10,8 @@ import {
 } from '../state';
 import {
   createToken,
-  FeatureMetadata,
   extendToken,
+  FeatureMetadata,
   Token,
   TokenExtension,
   _metadata,
@@ -52,12 +52,10 @@ export function addValidation<TState>(
   const { validator, debounceMs = 200 } = options;
 
   return token => {
-    const errorsToken = createToken(
-      addState<ErrorsState>(() => ({}))
-    );
+    const errorsToken = createToken(addState<ErrorsState>({}));
 
     const validationStatusToken = createToken(
-      addState<ValidationStatus>(() => 'pending')
+      addState<ValidationStatus>('pending')
     );
 
     let lastValidationVersion = 0;
@@ -82,8 +80,6 @@ export function addValidation<TState>(
       debounceMs
     );
 
-    debouncedValidate(getTokenValue(token), lastValidationVersion);
-
     subscribeToTokenValue(token, async newValue => {
       setTokenValue(validationStatusToken, 'pending');
       lastValidationVersion++;
@@ -104,6 +100,8 @@ export function addValidation<TState>(
       },
       extendChildren: true,
     } as TokenExtension<Error<TState>, Validated<TState>>);
+
+    debouncedValidate(getTokenValue(token), lastValidationVersion);
 
     return tokenWithValidationStatus;
   };
