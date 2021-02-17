@@ -2,12 +2,14 @@ import { Dispatch, useLayoutEffect, useState } from 'react';
 import {
   FeatureMetadata,
   NoFeature,
+  PartialToken,
   Token,
   TokenExtension,
   useToken,
   useTokenExtension,
   _metadata,
 } from '../token';
+import { NonFunctionProperties } from '../utils/types';
 
 const _getValue = Symbol('getValue');
 const _subscribe = Symbol('subscribe');
@@ -16,12 +18,12 @@ const _setValue = Symbol('setValue');
 export interface State<TReadState, TWriteState = TReadState>
   extends ReadState<TReadState>,
     WriteState<TWriteState> {
-  [_metadata]?: FeatureMetadata<
+  [_metadata]: FeatureMetadata<
     'state',
     State<TReadState, TWriteState>,
     ReadState<TReadState> & WriteState<TWriteState>,
     {
-      [P in keyof NonNullable<TReadState> &
+      [P in keyof NonFunctionProperties<NonNullable<TReadState>> &
         keyof NonNullable<TWriteState>]-?: State<
         | NonNullable<TReadState>[P]
         | (TReadState extends null | undefined ? undefined : never),
@@ -34,12 +36,12 @@ export interface State<TReadState, TWriteState = TReadState>
 export interface ReadState<TState> {
   [_getValue](): TState;
   [_subscribe](listener: TokenValueListener<TState>): Disposer;
-  [_metadata]?: FeatureMetadata<
+  [_metadata]: FeatureMetadata<
     'readState',
     ReadState<TState>,
     NoFeature,
     {
-      [P in keyof NonNullable<TState>]-?: ReadState<
+      [P in keyof NonFunctionProperties<NonNullable<TState>>]-?: ReadState<
         | NonNullable<TState>[P]
         | (TState extends null | undefined ? undefined : never)
       >;
@@ -49,12 +51,14 @@ export interface ReadState<TState> {
 
 export interface WriteState<TState> {
   [_setValue](newValue: TState): void;
-  [_metadata]?: FeatureMetadata<
+  [_metadata]: FeatureMetadata<
     'writeState',
     WriteState<TState>,
     NoFeature,
     {
-      [P in keyof NonNullable<TState>]-?: WriteState<NonNullable<TState>[P]>;
+      [P in keyof NonFunctionProperties<NonNullable<TState>>]-?: WriteState<
+        NonNullable<TState>[P]
+      >;
     }
   >;
 }
@@ -113,19 +117,19 @@ export function addState<TState>(
   };
 }
 
-export function getTokenValue<TState>(token: ReadState<TState>) {
+export function getTokenValue<TState>(token: PartialToken<ReadState<TState>>) {
   return token[_getValue]();
 }
 
 export function setTokenValue<TState>(
-  token: WriteState<TState>,
+  token: PartialToken<WriteState<TState>>,
   newValue: TState
 ) {
   return token[_setValue](newValue);
 }
 
 export function subscribeToTokenValue<TState>(
-  token: ReadState<TState>,
+  token: PartialToken<ReadState<TState>>,
   listener: TokenValueListener<TState>
 ): Disposer {
   return token[_subscribe](listener);
@@ -146,18 +150,20 @@ export function useStateToken<T>(initializer: T | (() => T)): Token<State<T>> {
   return stateToken;
 }
 
-export function useTokenValue<TState>(token: ReadState<TState>) {
+export function useTokenValue<TState>(token: PartialToken<ReadState<TState>>) {
   const [value, setValue] = useState<TState>(getTokenValue(token));
   useLayoutEffect(() => subscribeToTokenValue(token, setValue), [token]);
   return value;
 }
 
-export function useTokenSetter<T>(token: WriteState<T>): Dispatch<T> {
+export function useTokenSetter<T>(
+  token: PartialToken<WriteState<T>>
+): Dispatch<T> {
   return value => setTokenValue(token, value);
 }
 
 export function useTokenState<TReadState, TWriteState = TReadState>(
-  token: ReadState<TReadState> & WriteState<TWriteState>
+  token: PartialToken<ReadState<TReadState> & WriteState<TWriteState>>
 ): [TReadState, Dispatch<TWriteState>] {
   return [useTokenValue(token), useTokenSetter(token)];
 }

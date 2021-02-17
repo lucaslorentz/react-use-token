@@ -1,4 +1,4 @@
-import { addPath } from '../path';
+import { addPath, Path } from '../path';
 import {
   addState,
   getTokenValue,
@@ -12,27 +12,47 @@ import {
   createToken,
   extendToken,
   FeatureMetadata,
+  NoFeature,
+  PartialToken,
   Token,
   TokenExtension,
   _metadata,
 } from '../token';
 import { debounce } from '../utils/debounce';
-import { addError, Error, ErrorsState } from './error';
+import { addErrorMessages, ErrorMessage, ErrorsState } from './error-message';
 
-export type ValidationStatus = 'pending' | 'validating' | 'invalid' | 'valid';
+export type ValidationStatusValues =
+  | 'pending'
+  | 'validating'
+  | 'invalid'
+  | 'valid';
 
 const _validationStatusToken = Symbol('validationStatusToken');
 
-export interface Validated<TState> extends Error<TState> {
+export interface ValidationStatus {
   readonly [_validationStatusToken]: Token<
-    ReadState<ValidationStatus> & WriteState<ValidationStatus>
+    ReadState<ValidationStatusValues> & WriteState<ValidationStatusValues>
   >;
-  [_metadata]?: FeatureMetadata<
-    'validation',
-    Validated<TState>,
-    Error<TState>,
+  [_metadata]: FeatureMetadata<
+    'validationStatus',
+    ValidationStatusValues,
+    NoFeature,
     {
-      [P in keyof NonNullable<TState>]-?: Validated<NonNullable<TState>[P]>;
+      [P in PropertyKey]: ValidationStatusValues;
+    }
+  >;
+}
+
+export interface Validated extends Path, ErrorMessage, ValidationStatus {
+  readonly [_validationStatusToken]: Token<
+    ReadState<ValidationStatusValues> & WriteState<ValidationStatusValues>
+  >;
+  [_metadata]: FeatureMetadata<
+    'validation',
+    Validated,
+    Path & ErrorMessage & ValidationStatus,
+    {
+      [P in PropertyKey]: Validated;
     }
   >;
 }
@@ -48,14 +68,14 @@ export interface ValidationOptions<TState> {
 
 export function addValidation<TState>(
   options: ValidationOptions<TState>
-): TokenExtension<ReadState<TState>, Validated<TState>> {
+): TokenExtension<ReadState<TState>, Path & ErrorMessage & Validated> {
   const { validator, debounceMs = 200 } = options;
 
   return token => {
     const errorsToken = createToken(addState<ErrorsState>({}));
 
     const validationStatusToken = createToken(
-      addState<ValidationStatus>('pending')
+      addState<ValidationStatusValues>('pending')
     );
 
     let lastValidationVersion = 0;
@@ -86,10 +106,10 @@ export function addValidation<TState>(
       debouncedValidate(newValue, lastValidationVersion);
     });
 
-    const tokenWithPath = extendToken(token, addPath<TState>());
+    const tokenWithPath = extendToken(token, addPath());
     const tokenWithErrrors = extendToken(
       tokenWithPath,
-      addError<TState>({
+      addErrorMessages({
         errorsToken: errorsToken,
       })
     );
@@ -99,7 +119,7 @@ export function addValidation<TState>(
         [_validationStatusToken]: validationStatusToken,
       },
       extendChildren: true,
-    } as TokenExtension<Error<TState>, Validated<TState>>);
+    } as TokenExtension<ErrorMessage, Validated>);
 
     debouncedValidate(getTokenValue(token), lastValidationVersion);
 
@@ -108,8 +128,8 @@ export function addValidation<TState>(
 }
 
 export function getTokenValidationStatus(
-  token: Validated<any>
-): ValidationStatus {
+  token: PartialToken<ValidationStatus>
+): ValidationStatusValues {
   return getTokenValue(token[_validationStatusToken]);
 }
 
@@ -117,7 +137,7 @@ export function getTokenValidationStatus(
 // React API
 ////////////////
 export function useTokenValidationStatus(
-  token: Validated<any>
-): ValidationStatus {
+  token: PartialToken<ValidationStatus>
+): ValidationStatusValues {
   return useTokenValue(token[_validationStatusToken]);
 }

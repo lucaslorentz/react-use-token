@@ -1,4 +1,4 @@
-export * from './error';
+export * from './error-message';
 export * from './form';
 export * from './schema';
 export * from './validation';

@@ -1,6 +1,6 @@
 import { addState } from '../state';
 import { createToken, extendToken } from '../token';
-import { getTokenError } from './error';
+import { getTokenErrorMessage } from './error-message';
 import { addValidation, getTokenValidationStatus } from './validation';
 
 describe('form/validation', () => {
@@ -19,12 +19,12 @@ describe('form/validation', () => {
       );
 
       expect(getTokenValidationStatus(token)).toBe('pending');
-      expect(getTokenError(token.name)).toBeUndefined();
+      expect(getTokenErrorMessage(token.name)).toBeUndefined();
 
-      await new Promise(r => setTimeout(r, 1));
+      await new Promise(r => setTimeout(r, 10));
 
       expect(getTokenValidationStatus(token)).toBe('invalid');
-      expect(getTokenError(token.name)).toBe('Name is required');
+      expect(getTokenErrorMessage(token.name)).toBe('Name is required');
     });
   });
 
@@ -41,12 +41,12 @@ describe('form/validation', () => {
       );
 
       expect(getTokenValidationStatus(token)).toBe('pending');
-      expect(getTokenError(token.name)).toBeUndefined();
+      expect(getTokenErrorMessage(token.name)).toBeUndefined();
 
-      await new Promise(r => setTimeout(r, 1));
+      await new Promise(r => setTimeout(r, 10));
 
       expect(getTokenValidationStatus(token)).toBe('valid');
-      expect(getTokenError(token.name)).toBeUndefined();
+      expect(getTokenErrorMessage(token.name)).toBeUndefined();
     });
   });
 });

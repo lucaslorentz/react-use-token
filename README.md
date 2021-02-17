@@ -1,6 +1,7 @@
 # react-use-token
 
 Enhanced react state hooks:
+
 - Simple react hooks API
 - Easy delegation of part of state to other components
 - Granular state observability, only re-renders affected components
@@ -21,6 +22,7 @@ yarn add react-use-token
 ## Problem
 
 React state hooks problems:
+
 - It couples the component that invokes the hook to the state, re-rendering it every time the state changes
 - Lot of boilerplate code to delegate part of the state to other components
 
@@ -39,18 +41,19 @@ React state hooks problems:
 Create a state token:
 
 ```ts
-const stateToken = useStateToken({ firstName: '',  lastName: '' });
+const stateToken = useStateToken({ firstName: '', lastName: '' });
 // typeof stateToken: Token<State<{ firstName: string, lastName: string }>>
 ```
 
 Create state token from value initializer.:
 
 ```ts
-const stateToken = useStateToken(() => ({ firstName: '',  lastName: '' }));
+const stateToken = useStateToken(() => ({ firstName: '', lastName: '' }));
 // typeof stateToken: Token<State<{ firstName: string, lastName: string }>>
 ```
 
 Decompose state token:
+
 ```ts
 const firsNameToken = stateToken.firstName;
 // typeof firsNameToken: Token<State<string>>
@@ -122,9 +125,10 @@ const formToken = useFormToken({ schema });
 <TextField token={formToken.firstName} />
 <TextField token={formToken.lastName} />
 ```
+
 [View in code sandbox](https://codesandbox.io/s/react-use-tokenform-example-9k9rk?file=/src/App.tsx)
 
-**All state tokens hooks/functions are also available in form tokens.** 
+**All state tokens hooks/functions are also available in form tokens.**
 
 Redeem schema information:
 
@@ -135,7 +139,7 @@ const { label, required } = useTokenSchemaInfo(formToken.firstName); // label: F
 Redeem validation error:
 
 ```ts
-const error = useTokenError(formToken.firstName); // Returns: Name is required 
+const error = useTokenErrorMessage(formToken.firstName); // Returns: Name is required
 ```
 
 Redeem validation status:
@@ -146,40 +150,40 @@ const validationStatus = useTokenValidationStatus(formToken); // Type: 'pending'
 
 ## Types guide
 
-A decomposable token is represented with type `Token<Features>`. Example:
+A decomposable token is represented with type `Token<Feature1 & Feature2...>`. It has all possible child tokens exposed as fields. Example:
 
 ```ts
-token: Token<ReadState<string>>
+function (token: Token<Feature1 & Feature2>) {
+  var childToken = token.child;
+}
 ```
 
-Multiple features should be combined with typescript intersection type. Example:
+Tokens with `any` types have less child tokens available, making them not assignable to a more specific token type. Example: `Token<ReadState<any>>` is not assignable to `Token<ReadState<string>>`.
+
+If you want to support `any` types, you can use `PartialToken<Feature1 & Feature2...>`, which is a more compatible token that doesn't have child token fields. You can convert `PartialToken<Features>` to `Token<Features>` by calling method `restoreToken(partialToken)`. Example:
 
 ```ts
-token: Token<ReadState<string> & WriteState<string>>
+function (partialToken: PartialToken<Feature1 & Feature2>) {
+  var token = restoreToken(token);
+}
 ```
-
-Whenever you need the token features but doesn't need to extend or decompose the token, you can omit the `Token<>` and use the feature types directly. Example:
-
-```ts
-token: ReadState<string> & WriteState<String>
-```
-
-Keep in mind that `Token<ReadState<string>>` is assignable to `ReadState<string>`, but not vice versa.
 
 Feature types:
 
-| Type | Description | Extends |
-| ---- | ----------- | --- |
-| `ReadState<TState>` | Read state | - |
-| `WriteState<TState>` | Write state | - |
-| `State<TReadState, TWriteState>` | Read and write state | `ReadState<TReadState>`<br />`WriteState<TWriteState>` |
-| `State<TState>` | Same as `State<TState, TState>` | - |
-| `Path<TState>` | Retrieve token path | - |
-| `Schema<TState>` | Retrieve token schema info | - |
-| `Error<TState>` | Retrieve token validation errors | - |
-| `Validated<TState>` | Retrieve validation status | `Error<TState>` |
-| `FormState<TReadState, TWriteState>` | Form features | `State<TReadState, TWriteState>`<br />`Validated<TReadState>`<br />`Schema<TReadState>` |
-| `FormState<TState>` | Same as `FormState<TState, TState>` | - |
+<!-- prettier-ignore -->
+| Type | Description |
+| ---- | ----------- |
+| `ReadState<TState>` | Read state of type TState |
+| `WriteState<TState>` | Write state of type TState |
+| `State<TReadState, TWriteState>` | Alias to `ReadState<TReadState>` & `WriteState<TWriteState>` |
+| `State<TState>` | Alias to `State<TState, TState>` |
+| `Path` | Retrieve token path |
+| `Schema` | Retrieve token schema info |
+| `ErrorMessage` | Retrieve token validation error message |
+| `ValidationStatus` | Retrieve token validation status |
+| `Validated` | Alias to `Path` & `ErrorMessage` & `ValidationStatus` |
+| `FormState<TReadState, TWriteState>` | Alias to `State<TReadState, TWriteState>` & `Validated<TReadState>` & `Schema<TReadState>` |
+| `FormState<TState>` | Alias to `FormState<TState, TState>` |
 
 ## Extensibility
 
@@ -199,7 +203,7 @@ Learn how to create your own extensions by reading our source code:
 
 - [path](./src/path/path.ts)
 - [state](./src/state/state.ts)
-- [error](./src/form/error.ts)
+- [error-message](./src/form/error-message.ts)
 - [schema](./src/form/schema.ts)
 - [validation](./src/form/validation.ts)
 - [form](./src/form/form.ts)

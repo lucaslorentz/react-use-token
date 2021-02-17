@@ -3,20 +3,24 @@ import { reach, SchemaOf } from 'yup';
 import {
   FeatureMetadata,
   NoFeature,
+  PartialToken,
   TokenExtension,
   _metadata,
 } from '../token';
+import { NonFunctionProperties } from '../utils/types';
 
 const _schema = Symbol('schema');
 
 export interface Schema<TState> {
   readonly [_schema]: SchemaOf<TState>;
-  [_metadata]?: FeatureMetadata<
+  [_metadata]: FeatureMetadata<
     'schema',
     Schema<TState>,
     NoFeature,
     {
-      [P in keyof NonNullable<TState>]-?: Schema<NonNullable<TState>[P]>;
+      [P in keyof NonFunctionProperties<NonNullable<TState>>]-?: Schema<
+        NonNullable<TState>[P]
+      >;
     }
   >;
 }
@@ -37,7 +41,7 @@ export function addSchema<TState>(
   };
 }
 
-export function getTokenSchema<T>(token: Schema<T>): SchemaOf<T> {
+export function getTokenSchema<T>(token: PartialToken<Schema<T>>): SchemaOf<T> {
   return token[_schema];
 }
 
@@ -57,7 +61,9 @@ export interface SchemaInfo {
 ////////////////
 // React API
 ////////////////
-export function useTokenSchemaInfo(token: Schema<unknown>): SchemaInfo {
+export function useTokenSchemaInfo(
+  token: PartialToken<Schema<any>>
+): SchemaInfo {
   const schemaDescription = useMemo(() => {
     return token[_schema]?.describe();
   }, [token]);

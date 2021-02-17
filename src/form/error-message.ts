@@ -1,8 +1,10 @@
 import { getTokenPath, Path } from '../path';
 import { getTokenValue, ReadState, useTokenValue } from '../state';
 import {
-  FeatureMetadata,
   extendToken,
+  FeatureMetadata,
+  NoFeature,
+  PartialToken,
   Token,
   TokenExtension,
   _metadata,
@@ -14,14 +16,14 @@ export interface ErrorsState {
   [path: string]: string;
 }
 
-export interface Error<TState = any> extends Path<TState> {
-  readonly [_errorToken]: ReadState<string>;
-  [_metadata]?: FeatureMetadata<
+export interface ErrorMessage {
+  readonly [_errorToken]: PartialToken<ReadState<string>>;
+  [_metadata]: FeatureMetadata<
     'error',
-    Error<TState>,
-    Path<TState>,
+    ErrorMessage,
+    NoFeature,
     {
-      [P in keyof NonNullable<TState>]-?: Error<NonNullable<TState>[P]>;
+      [P in PropertyKey]: ErrorMessage;
     }
   >;
 }
@@ -30,9 +32,9 @@ export interface ErrorOptions {
   errorsToken: Token<ReadState<ErrorsState>>;
 }
 
-export function addError<TState = any>(
+export function addErrorMessages(
   options: ErrorOptions
-): TokenExtension<Path<TState>, Error<TState>> {
+): TokenExtension<Path, ErrorMessage> {
   const { errorsToken } = options;
   return token =>
     extendToken(token, {
@@ -42,16 +44,20 @@ export function addError<TState = any>(
       extendChildren: childToken => ({
         [_errorToken]: errorsToken[getTokenPath(childToken)],
       }),
-    } as TokenExtension<Path<TState>, Error<TState>>);
+    } as TokenExtension<Path, ErrorMessage>);
 }
 
-export function getTokenError(token: Error): string | undefined {
+export function getTokenErrorMessage(
+  token: PartialToken<ErrorMessage>
+): string | undefined {
   return getTokenValue(token[_errorToken]);
 }
 
 ////////////////
 // React API
 ////////////////
-export function useTokenError(token: Error): string | undefined {
+export function useTokenErrorMessage(
+  token: PartialToken<ErrorMessage>
+): string | undefined {
   return useTokenValue(token[_errorToken]);
 }
