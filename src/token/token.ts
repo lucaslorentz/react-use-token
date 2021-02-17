@@ -143,14 +143,17 @@ function getProxyTarget<Features>(
 
 export type TokenExtension<BaseFeatures, NewFeatures> =
   | {
-      extend: Omit<NewFeatures, keyof BaseFeatures>;
+      extend: Omit<PartialToken<NewFeatures>, keyof PartialToken<BaseFeatures>>;
       extendChildren?:
         | boolean
         | ((
             token: Token<BaseFeatures>,
             parentToken: Token<BaseFeatures & NewFeatures>,
             property: PropertyKey
-          ) => Omit<NewFeatures, keyof BaseFeatures>);
+          ) => Omit<
+            PartialToken<NewFeatures>,
+            keyof PartialToken<BaseFeatures>
+          >);
     }
   | ((
       token: Token<BaseFeatures>

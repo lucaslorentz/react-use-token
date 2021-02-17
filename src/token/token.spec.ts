@@ -55,9 +55,9 @@ describe('token', () => {
 
   describe('types', () => {
     describe('single feature', () => {
-      it('have token features', () => {
+      it('not match features without token', () => {
         type result = Token<FeatureA>;
-        expectTypeOf<result>().toMatchTypeOf<FeatureA>();
+        expectTypeOf<result>().not.toMatchTypeOf<FeatureA>();
       });
 
       it('have child tokens', () => {
@@ -70,9 +70,9 @@ describe('token', () => {
     });
 
     describe('multi feature', () => {
-      it('have token features', () => {
+      it('not match features without token', () => {
         type result = Token<FeatureA & FeatureB>;
-        expectTypeOf<result>().toMatchTypeOf<FeatureA & FeatureB>();
+        expectTypeOf<result>().not.toMatchTypeOf<FeatureA & FeatureB>();
       });
 
       it('have right child tokens', () => {
@@ -94,9 +94,9 @@ describe('token', () => {
     });
 
     describe('feature inheritance', () => {
-      it('have token features', () => {
+      it('not match features without token', () => {
         type result = Token<FeatureA2>;
-        expectTypeOf<result>().toMatchTypeOf<FeatureA2>();
+        expectTypeOf<result>().not.toMatchTypeOf<FeatureA2>();
       });
 
       it('have right child tokens', () => {
@@ -116,10 +116,10 @@ describe('token', () => {
     });
 
     describe('feature group', () => {
-      it('have token features', () => {
+      it('not match features without token', () => {
         type result = Token<FeatureAB>;
-        expectTypeOf<result>().toMatchTypeOf<FeatureAB>();
-        expectTypeOf<result>().toMatchTypeOf<FeatureA & FeatureB>();
+        expectTypeOf<result>().not.toMatchTypeOf<FeatureAB>();
+        expectTypeOf<result>().not.toMatchTypeOf<FeatureA & FeatureB>();
       });
 
       it('have right child tokens', () => {
@@ -152,7 +152,7 @@ describe('token', () => {
 
 interface FeatureA {
   [_dataA]: string;
-  [_metadata]?: FeatureMetadata<
+  [_metadata]: FeatureMetadata<
     'featureA',
     FeatureA,
     NoFeature,
@@ -167,11 +167,11 @@ function addFeatureA(value: string): TokenExtension<NoFeature, FeatureA> {
     extendChildren: true,
   };
 }
-function getFeatureAValue(token: FeatureA) {
+function getFeatureAValue(token: PartialToken<FeatureA>) {
   return token[_dataA];
 }
 interface FeatureA2 extends FeatureA {
-  [_metadata]?: FeatureA[typeof _metadata] &
+  [_metadata]: FeatureA[typeof _metadata] &
     FeatureMetadata<
       'featureA2',
       FeatureA2,
@@ -181,7 +181,7 @@ interface FeatureA2 extends FeatureA {
 }
 interface FeatureB {
   [_dataB]: string;
-  [_metadata]?: FeatureMetadata<
+  [_metadata]: FeatureMetadata<
     'featureB',
     FeatureB,
     NoFeature,
@@ -189,7 +189,7 @@ interface FeatureB {
   >;
 }
 interface FeatureAB extends FeatureA, FeatureB {
-  [_metadata]?: FeatureA[typeof _metadata] &
+  [_metadata]: FeatureA[typeof _metadata] &
     FeatureB[typeof _metadata] &
     FeatureMetadata<
       'featureAB',

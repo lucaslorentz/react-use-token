@@ -33,7 +33,7 @@ export interface ValidationStatus {
   readonly [_validationStatusToken]: Token<
     ReadState<ValidationStatusValues> & WriteState<ValidationStatusValues>
   >;
-  [_metadata]?: FeatureMetadata<
+  [_metadata]: FeatureMetadata<
     'validationStatus',
     ValidationStatusValues,
     NoFeature,
@@ -47,7 +47,7 @@ export interface Validated extends Path, ErrorMessage, ValidationStatus {
   readonly [_validationStatusToken]: Token<
     ReadState<ValidationStatusValues> & WriteState<ValidationStatusValues>
   >;
-  [_metadata]?: FeatureMetadata<
+  [_metadata]: FeatureMetadata<
     'validation',
     Validated,
     Path & ErrorMessage & ValidationStatus,

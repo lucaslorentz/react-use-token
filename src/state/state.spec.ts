@@ -64,8 +64,8 @@ describe('state', () => {
   });
 
   describe('types', () => {
-    it('token should be assignable to feature', () => {
-      expectTypeOf<Token<ReadState<string>>>().toMatchTypeOf<
+    it('token should not be assignable to pure feature', () => {
+      expectTypeOf<Token<ReadState<string>>>().not.toMatchTypeOf<
         ReadState<string>
       >();
     });

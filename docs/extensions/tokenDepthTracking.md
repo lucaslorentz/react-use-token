@@ -12,7 +12,7 @@ export interface Depth {
   [_depth]: number;
 
   // Declare child features
-  [_metadata]?: FeatureMetadata<
+  [_metadata]: FeatureMetadata<
     'depth', // Unique identifier
     Depth, // Self type
     NoFeature, // Features to hide

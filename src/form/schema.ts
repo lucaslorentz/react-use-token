@@ -13,7 +13,7 @@ const _schema = Symbol('schema');
 
 export interface Schema<TState> {
   readonly [_schema]: SchemaOf<TState>;
-  [_metadata]?: FeatureMetadata<
+  [_metadata]: FeatureMetadata<
     'schema',
     Schema<TState>,
     NoFeature,

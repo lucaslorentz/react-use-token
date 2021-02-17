@@ -18,7 +18,7 @@ export interface ErrorsState {
 
 export interface ErrorMessage {
   readonly [_errorToken]: PartialToken<ReadState<string>>;
-  [_metadata]?: FeatureMetadata<
+  [_metadata]: FeatureMetadata<
     'error',
     ErrorMessage,
     NoFeature,

@@ -18,7 +18,7 @@ const _setValue = Symbol('setValue');
 export interface State<TReadState, TWriteState = TReadState>
   extends ReadState<TReadState>,
     WriteState<TWriteState> {
-  [_metadata]?: FeatureMetadata<
+  [_metadata]: FeatureMetadata<
     'state',
     State<TReadState, TWriteState>,
     ReadState<TReadState> & WriteState<TWriteState>,
@@ -36,7 +36,7 @@ export interface State<TReadState, TWriteState = TReadState>
 export interface ReadState<TState> {
   [_getValue](): TState;
   [_subscribe](listener: TokenValueListener<TState>): Disposer;
-  [_metadata]?: FeatureMetadata<
+  [_metadata]: FeatureMetadata<
     'readState',
     ReadState<TState>,
     NoFeature,
@@ -51,7 +51,7 @@ export interface ReadState<TState> {
 
 export interface WriteState<TState> {
   [_setValue](newValue: TState): void;
-  [_metadata]?: FeatureMetadata<
+  [_metadata]: FeatureMetadata<
     'writeState',
     WriteState<TState>,
     NoFeature,

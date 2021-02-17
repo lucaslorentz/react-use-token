@@ -20,7 +20,7 @@ export interface FormState<TReadState, TWriteState = TReadState>
     ErrorMessage,
     Validated,
     Schema<TReadState> {
-  [_metadata]?: FeatureMetadata<
+  [_metadata]: FeatureMetadata<
     'formState',
     FormState<TReadState, TWriteState>,
     State<TReadState, TWriteState> &

@@ -10,7 +10,7 @@ const _path = Symbol('path');
 
 export interface Path {
   readonly [_path]: string;
-  [_metadata]?: FeatureMetadata<
+  [_metadata]: FeatureMetadata<
     'path',
     Path,
     NoFeature,
