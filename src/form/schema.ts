@@ -62,10 +62,11 @@ export interface SchemaInfo {
 // React API
 ////////////////
 export function useTokenSchemaInfo(
-  token: PartialToken<Schema<any>>
+  token: PartialToken<Schema<any>> | undefined
 ): SchemaInfo {
   const schemaDescription = useMemo(() => {
-    return token[_schema]?.describe();
+    if (!token) return;
+    return getTokenSchema(token).describe();
   }, [token]);
   if (!schemaDescription) return {};
   return {

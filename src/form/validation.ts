@@ -138,6 +138,12 @@ export function getTokenValidationStatus(
 ////////////////
 export function useTokenValidationStatus(
   token: PartialToken<ValidationStatus>
-): ValidationStatusValues {
-  return useTokenValue(token[_validationStatusToken]);
+): ValidationStatusValues;
+export function useTokenValidationStatus(
+  token: PartialToken<ValidationStatus> | undefined
+): ValidationStatusValues | undefined;
+export function useTokenValidationStatus(
+  token: PartialToken<ValidationStatus> | undefined
+): ValidationStatusValues | undefined {
+  return useTokenValue(token?.[_validationStatusToken]);
 }

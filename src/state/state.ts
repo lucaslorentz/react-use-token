@@ -150,20 +150,50 @@ export function useStateToken<T>(initializer: T | (() => T)): Token<State<T>> {
   return stateToken;
 }
 
-export function useTokenValue<TState>(token: PartialToken<ReadState<TState>>) {
-  const [value, setValue] = useState<TState>(getTokenValue(token));
-  useLayoutEffect(() => subscribeToTokenValue(token, setValue), [token]);
+export function useTokenValue<TState>(
+  token: PartialToken<ReadState<TState>>
+): TState;
+export function useTokenValue<TState>(
+  token: PartialToken<ReadState<TState>> | undefined
+): TState | undefined;
+export function useTokenValue<TState>(
+  token: PartialToken<ReadState<TState>> | undefined
+): TState | undefined {
+  const [value, setValue] = useState<TState | undefined>(
+    token ? getTokenValue(token) : undefined
+  );
+  useLayoutEffect(() => {
+    if (!token) return;
+    return subscribeToTokenValue(token, setValue);
+  }, [token]);
   return value;
 }
 
-export function useTokenSetter<T>(
-  token: PartialToken<WriteState<T>>
-): Dispatch<T> {
+export function useTokenSetter<TState>(
+  token: PartialToken<WriteState<TState>>
+): Dispatch<TState>;
+export function useTokenSetter<TState>(
+  token: PartialToken<WriteState<TState>> | undefined
+): Dispatch<TState> | undefined;
+export function useTokenSetter<TState>(
+  token: PartialToken<WriteState<TState>> | undefined
+): Dispatch<TState> | undefined {
+  if (!token) return;
   return value => setTokenValue(token, value);
 }
 
 export function useTokenState<TReadState, TWriteState = TReadState>(
   token: PartialToken<ReadState<TReadState> & WriteState<TWriteState>>
-): [TReadState, Dispatch<TWriteState>] {
+): [TReadState, Dispatch<TWriteState>];
+export function useTokenState<TReadState, TWriteState = TReadState>(
+  token:
+    | PartialToken<ReadState<TReadState> & WriteState<TWriteState>>
+    | undefined
+): [TReadState | undefined, Dispatch<TWriteState> | undefined];
+export function useTokenState<TReadState, TWriteState = TReadState>(
+  token:
+    | PartialToken<ReadState<TReadState> & WriteState<TWriteState>>
+    | undefined
+): [TReadState | undefined, Dispatch<TWriteState> | undefined] {
   return [useTokenValue(token), useTokenSetter(token)];
 }

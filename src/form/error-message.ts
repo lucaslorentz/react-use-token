@@ -57,7 +57,7 @@ export function getTokenErrorMessage(
 // React API
 ////////////////
 export function useTokenErrorMessage(
-  token: PartialToken<ErrorMessage>
+  token: PartialToken<ErrorMessage> | undefined
 ): string | undefined {
-  return useTokenValue(token[_errorToken]);
+  return useTokenValue(token?.[_errorToken]);
 }
