@@ -35,7 +35,7 @@ export function trackDepth(): TokenExtension<NoFeature, Depth> {
 }
 
 // Expose functions to access token features
-export function getTokenDepth(token: Depth) {
+export function getTokenDepth(token: Token<Depth>) {
   return token[_depth];
 }
 ```
