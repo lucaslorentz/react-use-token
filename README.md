@@ -1,6 +1,6 @@
 # react-use-token
 
-Enhanced react state hooks:
+Token based state management for react:
 
 - Simple react hooks API
 - Easy delegation of part of state to other components
