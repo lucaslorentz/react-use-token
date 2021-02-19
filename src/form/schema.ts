@@ -66,7 +66,9 @@ export function useTokenSchemaInfo(
 ): SchemaInfo {
   const schemaDescription = useMemo(() => {
     if (!token) return;
-    return getTokenSchema(token).describe();
+    const schema = getTokenSchema(token);
+    if (!schema) return;
+    return schema.describe();
   }, [token]);
   if (!schemaDescription) return {};
   return {
