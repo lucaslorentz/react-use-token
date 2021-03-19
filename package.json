@@ -13,7 +13,7 @@
   "scripts": {
     "start": "tsdx watch",
     "build": "tsdx build",
-    "test": "tsdx test --passWithNoTests",
+    "test": "tsc --noEmit && tsdx test --passWithNoTests",
     "lint": "tsdx lint src",
     "prepare": "tsdx build",
     "size": "size-limit",
@@ -21,7 +21,7 @@
   },
   "peerDependencies": {
     "react": "^16.8.0 || ^17.0.0",
-    "yup": "^0.32.8"
+    "yup": "^0.32.0"
   },
   "husky": {
     "hooks": {
@@ -58,19 +58,19 @@
     }
   ],
   "devDependencies": {
-    "@size-limit/preset-small-lib": "^4.9.2",
-    "@testing-library/react-hooks": "^5.0.3",
+    "@size-limit/preset-small-lib": "^4.10.1",
+    "@testing-library/react-hooks": "^5.1.0",
     "@types/react": "^16.8.0 || ^17.0.0",
     "@types/react-dom": "^16.8.0 || ^17.0.0",
     "expect-type": "^0.11.0",
-    "husky": "^5.0.9",
+    "husky": "^5.1.3",
     "react": "^16.8.0 || ^17.0.0",
     "react-dom": "^16.8.0 || ^17.0.0",
-    "size-limit": "^4.9.2",
+    "size-limit": "^4.10.1",
     "tsdx": "^0.14.1",
     "tslib": "^2.1.0",
     "typescript": "^3.7.3",
-    "yup": "^0.32.8"
+    "yup": "^0.32.9"
   },
   "dependencies": {}
 }

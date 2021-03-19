@@ -1,14 +1,8 @@
 import { renderHook } from '@testing-library/react-hooks';
 import { expectTypeOf } from 'expect-type';
-import {
-  FeatureMetadata,
-  NoFeature,
-  PartialToken,
-  Token,
-  TokenExtension,
-  useToken,
-  _metadata,
-} from './token';
+import { PartialToken, Token, useToken } from '.';
+import { FeatureBase, NoFeature } from './feature';
+import { TokenExtension } from './token';
 
 const _dataA = Symbol('dataA');
 const _dataB = Symbol('dataB');
@@ -30,7 +24,9 @@ describe('token', () => {
   });
 
   describe('with extension', () => {
-    const { result } = renderHook(() => useToken(() => addFeatureA('secret')));
+    const { result } = renderHook(() =>
+      useToken(b => b.extend(addFeatureA('secret')))
+    );
     const token = result.current;
 
     it('returns token with feature', () => {
@@ -150,51 +146,39 @@ describe('token', () => {
   });
 });
 
-interface FeatureA {
-  [_dataA]: string;
-  [_metadata]: FeatureMetadata<
-    'featureA',
-    FeatureA,
-    NoFeature,
-    { a: FeatureA; common: FeatureA }
-  >;
-}
-function addFeatureA(value: string): TokenExtension<NoFeature, FeatureA> {
-  return {
-    extend: {
-      [_dataA]: value,
-    },
-    extendChildren: true,
+interface FeatureA extends FeatureBase<'FeatureA', FeatureA> {
+  payload: {
+    [_dataA]: string;
   };
+  childFeatures: { a: FeatureA; common: FeatureA };
+}
+function addFeatureA(
+  value: string
+): TokenExtension<NoFeature, { add: FeatureA }> {
+  return builder =>
+    builder.addFeature<FeatureA>({
+      extend: {
+        [_dataA]: value,
+      },
+      extendChildren: true,
+    });
 }
 function getFeatureAValue(token: PartialToken<FeatureA>) {
   return token[_dataA];
 }
-interface FeatureA2 extends FeatureA {
-  [_metadata]: FeatureA[typeof _metadata] &
-    FeatureMetadata<
-      'featureA2',
-      FeatureA2,
-      FeatureA,
-      { a: FeatureA2; common: FeatureA2 }
-    >;
+interface FeatureA2 extends FeatureBase<'FeatureA2', FeatureA2> {
+  payload: FeatureA['payload'];
+  baseFeatures: FeatureA;
+  childFeatures: { a: FeatureA2; common: FeatureA2 };
 }
-interface FeatureB {
-  [_dataB]: string;
-  [_metadata]: FeatureMetadata<
-    'featureB',
-    FeatureB,
-    NoFeature,
-    { b: FeatureB; common: FeatureB }
-  >;
+interface FeatureB extends FeatureBase<'FeatureB', FeatureB> {
+  payload: {
+    [_dataB]: string;
+  };
+  childFeatures: { b: FeatureB; common: FeatureB };
 }
-interface FeatureAB extends FeatureA, FeatureB {
-  [_metadata]: FeatureA[typeof _metadata] &
-    FeatureB[typeof _metadata] &
-    FeatureMetadata<
-      'featureAB',
-      FeatureAB,
-      FeatureA & FeatureB,
-      { common: FeatureAB }
-    >;
+interface FeatureAB extends FeatureBase<'FeatureAB', FeatureAB> {
+  payload: FeatureA['payload'] & FeatureB['payload'];
+  childFeatures: FeatureA['childFeatures'] &
+    FeatureB['childFeatures'] & { common: FeatureAB };
 }

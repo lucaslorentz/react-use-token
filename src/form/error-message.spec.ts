@@ -1,6 +1,6 @@
 import { addPath } from '../path/path';
 import { addState } from '../state';
-import { createToken, extendToken } from '../token';
+import { TokenBuilder } from '../token';
 import { addErrorMessages, getTokenErrorMessage } from './error-message';
 
 describe('form/error', () => {
@@ -10,14 +10,25 @@ describe('form/error', () => {
   };
 
   it('should return errors by field', () => {
-    var errorsStateToken = createToken(
-      addState<Record<string, string>>(initialErrors)
-    );
+    var errorsStateToken = new TokenBuilder()
+      .extend(addPath())
+      .extend(addState<Record<string, string>>(initialErrors))
+      .build();
 
-    var errorToken = extendToken(
-      createToken(addPath()),
-      addErrorMessages({ errorsToken: errorsStateToken })
-    );
+    var showAllErrorsToken = new TokenBuilder()
+      .extend(addPath())
+      .extend(addState(false))
+      .build();
+
+    var errorToken = new TokenBuilder()
+      .extend(addPath())
+      .extend(
+        addErrorMessages({
+          errorsToken: errorsStateToken,
+          showAllErrorsToken: showAllErrorsToken,
+        })
+      )
+      .build();
 
     expect(getTokenErrorMessage(errorToken.name)).toBe(initialErrors['name']);
 

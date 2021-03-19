@@ -173,16 +173,14 @@ Feature types:
 <!-- prettier-ignore -->
 | Type | Description |
 | ---- | ----------- |
-| `ReadState<TState>` | Read state of type TState |
-| `WriteState<TState>` | Write state of type TState |
-| `State<TReadState, TWriteState>` | Alias to `ReadState<TReadState>` & `WriteState<TWriteState>` |
+| `State<TRead, TWrite>` | State reading and writing |
 | `State<TState>` | Alias to `State<TState, TState>` |
 | `Path` | Retrieve token path |
 | `Schema` | Retrieve token schema info |
 | `ErrorMessage` | Retrieve token validation error message |
 | `ValidationStatus` | Retrieve token validation status |
 | `Validated` | Alias to `Path` & `ErrorMessage` & `ValidationStatus` |
-| `FormState<TReadState, TWriteState>` | Alias to `State<TReadState, TWriteState>` & `Validated<TReadState>` & `Schema<TReadState>` |
+| `FormState<TRead, TWrite>` | Alias to `State<TRead, TWrite>` & `Validated<TRead>` & `Schema<TRead>` |
 | `FormState<TState>` | Alias to `FormState<TState, TState>` |
 
 ## Extensibility

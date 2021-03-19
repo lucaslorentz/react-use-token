@@ -2,42 +2,46 @@ import { SchemaOf, ValidationError } from 'yup';
 import { Path } from '../path';
 import { State, useStateToken } from '../state';
 import {
-  extendToken,
-  FeatureMetadata,
+  FeatureBase,
   Token,
   TokenExtension,
   useTokenExtension,
-  _metadata,
 } from '../token';
 import { NonFunctionProperties } from '../utils/types';
-import { ErrorMessage, ErrorsState } from './error-message';
+import { ErrorMessage, ErrorMessages } from './error-message';
 import { addSchema, Schema } from './schema';
+import { TouchedInfo } from './touched';
 import { addValidation, Validated } from './validation';
 
-export interface FormState<TReadState, TWriteState = TReadState>
-  extends State<TReadState, TWriteState>,
-    Path,
-    ErrorMessage,
-    Validated,
-    Schema<TReadState> {
-  [_metadata]: FeatureMetadata<
-    'formState',
-    FormState<TReadState, TWriteState>,
-    State<TReadState, TWriteState> &
-      Path &
-      ErrorMessage &
-      Validated &
-      Schema<TReadState>,
+export interface FormState<TRead, TWrite = TRead>
+  extends FeatureBase<'FormState', FormState<TRead, TWrite>> {
+  payload: State<TRead, TWrite>['payload'] &
+    Path['payload'] &
+    ErrorMessage['payload'] &
+    Validated['payload'] &
+    Schema['payload'] &
+    TouchedInfo['payload'];
+  baseFeatures: State<TRead, TWrite> &
+    Path &
+    ErrorMessage &
+    Validated &
+    Schema &
+    TouchedInfo;
+  childFeatures: State<TRead, TWrite>['childFeatures'] &
+    Path['childFeatures'] &
+    ErrorMessage['childFeatures'] &
+    Validated['childFeatures'] &
+    Schema['childFeatures'] &
+    TouchedInfo['childFeatures'] &
     {
-      [P in keyof NonFunctionProperties<NonNullable<TReadState>> &
-        keyof NonFunctionProperties<NonNullable<TWriteState>> &
+      [P in keyof NonFunctionProperties<NonNullable<TRead>> &
+        keyof NonFunctionProperties<NonNullable<TWrite>> &
         PropertyKey]-?: FormState<
-        | NonNullable<TReadState>[P]
-        | (TReadState extends null | undefined ? undefined : never),
-        NonNullable<TWriteState>[P]
+        | NonNullable<TRead>[P]
+        | (TRead extends null | undefined ? undefined : never),
+        NonNullable<TWrite>[P]
       >;
-    }
-  >;
+    };
 }
 
 export interface FormOptions<TState> {
@@ -45,28 +49,24 @@ export interface FormOptions<TState> {
   debounceValidationMs?: number;
 }
 
-export function addForm<TState>(
-  options: FormOptions<TState>
-): TokenExtension<State<TState>, FormState<TState>> {
+export function addForm<TReadState, TWriteState>(
+  options: FormOptions<TReadState>
+): TokenExtension<
+  State<TReadState, TWriteState>,
+  { add: FormState<TReadState, TWriteState> }
+> {
   const { schema, debounceValidationMs = 200 } = options;
-
-  return token => {
-    const schemaToken = extendToken(token, addSchema<TState>(schema));
-
-    const validationToken = extendToken(
-      schemaToken,
-      addValidation<TState>({
+  return builder =>
+    builder.extend(addSchema(schema)).extend(
+      addValidation<TReadState, TWriteState>({
         validator: async value => await validateForm(schema, value),
         debounceMs: debounceValidationMs,
       })
     );
-
-    return (validationToken as unknown) as Token<FormState<TState>>;
-  };
 }
 
 async function validateForm(schema: SchemaOf<any>, value: any) {
-  const errors: ErrorsState = {};
+  const errors: ErrorMessages = {};
   try {
     await schema.validate(value, {
       strict: true,
@@ -96,5 +96,7 @@ export function useFormToken<TState>(
 ): Token<FormState<TState>> {
   const { schema } = options;
   const valueToken = useStateToken<TState>(() => schema.getDefault() as TState);
-  return useTokenExtension(valueToken, () => addForm(options));
+  return useTokenExtension(valueToken, builder =>
+    builder.extend(addForm<TState, TState>(options))
+  );
 }

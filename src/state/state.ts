@@ -1,13 +1,11 @@
 import { Dispatch, useLayoutEffect, useState } from 'react';
+import { addPath, getTokenPath, Path } from '../path';
 import {
-  FeatureMetadata,
-  NoFeature,
+  FeatureBase,
   PartialToken,
   Token,
   TokenExtension,
   useToken,
-  useTokenExtension,
-  _metadata,
 } from '../token';
 import { NonFunctionProperties } from '../utils/types';
 
@@ -15,121 +13,185 @@ const _getValue = Symbol('getValue');
 const _subscribe = Symbol('subscribe');
 const _setValue = Symbol('setValue');
 
-export interface State<TReadState, TWriteState = TReadState>
-  extends ReadState<TReadState>,
-    WriteState<TWriteState> {
-  [_metadata]: FeatureMetadata<
-    'state',
-    State<TReadState, TWriteState>,
-    ReadState<TReadState> & WriteState<TWriteState>,
+export interface State<TRead, TWrite = TRead>
+  extends FeatureBase<'state', State<TRead, TWrite>> {
+  payload: Path['payload'] & {
+    [_getValue](): TRead;
+    [_subscribe](listener: TokenValueListener<TRead>): Disposer;
+    [_setValue](newValue: TWrite, path?: string): void;
+  };
+  baseFeatures: Path;
+  childFeatures: Path['childFeatures'] &
     {
-      [P in keyof NonFunctionProperties<NonNullable<TReadState>> &
-        keyof NonNullable<TWriteState>]-?: State<
-        | NonNullable<TReadState>[P]
-        | (TReadState extends null | undefined ? undefined : never),
-        NonNullable<TWriteState>[P]
+      [P in keyof NonFunctionProperties<NonNullable<TRead>>]-?: State<
+        | NonNullable<TRead>[P]
+        | (TRead extends null | undefined ? undefined : never),
+        NonNullable<TRead>[P]
       >;
-    }
-  >;
+    };
 }
 
-export interface ReadState<TState> {
-  [_getValue](): TState;
-  [_subscribe](listener: TokenValueListener<TState>): Disposer;
-  [_metadata]: FeatureMetadata<
-    'readState',
-    ReadState<TState>,
-    NoFeature,
-    {
-      [P in keyof NonFunctionProperties<NonNullable<TState>>]-?: ReadState<
-        | NonNullable<TState>[P]
-        | (TState extends null | undefined ? undefined : never)
-      >;
-    }
-  >;
-}
-
-export interface WriteState<TState> {
-  [_setValue](newValue: TState): void;
-  [_metadata]: FeatureMetadata<
-    'writeState',
-    WriteState<TState>,
-    NoFeature,
-    {
-      [P in keyof NonFunctionProperties<NonNullable<TState>>]-?: WriteState<
-        NonNullable<TState>[P]
-      >;
-    }
-  >;
-}
-
-export type TokenValueListener<TState> = (newValue: TState) => void;
+export type TokenValueListener<TState> = (
+  newValue: TState,
+  path: string
+) => void;
 export type Disposer = () => void;
 
 export function addState<TState>(
   initialValue: TState
-): TokenExtension<NoFeature, State<TState>> {
-  let value: TState = initialValue;
+): TokenExtension<Path, { add: State<TState> }> {
+  return builder => {
+    let value: TState = initialValue;
 
-  const subscriptions: TokenValueListener<TState>[] = [];
+    const subscriptions = new Map<TokenValueListener<TState>, number>();
 
-  return {
-    extend: {
-      [_getValue]: function() {
-        return value!;
+    const pathToken = builder.peek();
+
+    return builder.addFeature<State<TState>>({
+      extend: {
+        [_getValue]: function() {
+          return value!;
+        },
+        [_setValue]: function(
+          newValue: TState,
+          path: string = getTokenPath(pathToken)
+        ) {
+          value = newValue;
+          notifySubscribers(subscriptions, newValue, path);
+        },
+        [_subscribe]: function(listener: TokenValueListener<TState>) {
+          return addSubscription(subscriptions, listener);
+        },
       },
-      [_setValue]: function(newValue: TState) {
-        value = newValue;
-        for (var subscription of subscriptions.slice()) {
-          subscription(newValue);
-        }
-      },
-      [_subscribe]: function(callback: TokenValueListener<TState>) {
-        subscriptions.push(callback);
-        return () => {
-          const index = subscriptions.indexOf(callback);
-          if (index !== -1) subscriptions.splice(index, 1);
-        };
-      },
-    },
-    extendChildren: (_, parent, property) => ({
-      [_getValue]: function() {
-        var parentValue: any = parent[_getValue]();
-        return parentValue?.[property];
-      },
-      [_setValue]: function(newValue: any) {
-        const base = typeof property === 'number' ? [] : {};
-        parent[_setValue](
-          Object.assign(base, parent[_getValue](), { [property]: newValue })
-        );
-      },
-      [_subscribe]: function(callback: TokenValueListener<TState>) {
-        let snapshot = this[_getValue]();
-        return parent[_subscribe]((newParentValue: any) => {
-          const newValue = newParentValue?.[property];
-          if (newValue !== snapshot) {
-            snapshot = newValue;
-            callback(newValue);
-          }
-        });
-      },
-    }),
+      extendChildren: (childToken, parent, property) => ({
+        [_getValue]: function() {
+          var parentValue: any = parent[_getValue]();
+          return parentValue?.[property];
+        },
+        [_setValue]: function(
+          newValue: any,
+          path: string = getTokenPath(childToken)
+        ) {
+          const base = typeof property === 'number' ? [] : {};
+          parent[_setValue](
+            Object.assign(base, parent[_getValue](), {
+              [property]: newValue,
+            }),
+            path
+          );
+        },
+        [_subscribe]: function(callback: TokenValueListener<TState>) {
+          let snapshot = this[_getValue]();
+          return parent[_subscribe]((newParentValue: any, path: string) => {
+            const newValue = newParentValue?.[property];
+            if (newValue !== snapshot) {
+              snapshot = newValue;
+              callback(newValue, path);
+            }
+          });
+        },
+      }),
+    });
   };
 }
 
-export function getTokenValue<TState>(token: PartialToken<ReadState<TState>>) {
+export function transformState<
+  TOldReadState,
+  TNewReadState,
+  TOldWriteState = TOldReadState,
+  TNewWriteState = TNewReadState
+>(
+  convertRead: (value: TOldReadState) => TNewReadState,
+  convertWrite: (value: TNewWriteState) => TOldWriteState
+): TokenExtension<
+  State<TOldReadState, TOldWriteState>,
+  {
+    remove: State<TOldReadState, TOldWriteState>;
+    add: State<TNewReadState, TNewWriteState>;
+  }
+> {
+  return builder => {
+    let originalToken = builder.peek();
+
+    let cachedValue = convertRead(originalToken[_getValue]());
+
+    const subscriptions = new Map<TokenValueListener<TNewReadState>, number>();
+
+    const disposeSubscription = subscribeToTokenValue(
+      originalToken,
+      (newOriginalValue, path) => {
+        const newValue = convertRead(newOriginalValue);
+        if (newValue !== cachedValue) {
+          cachedValue = newValue;
+          notifySubscribers(subscriptions, newValue, path);
+        }
+      }
+    );
+
+    return builder.replaceFeature<
+      State<TOldReadState, TOldWriteState>,
+      State<TNewReadState, TNewWriteState>
+    >({
+      extend: {
+        [_getValue]: function() {
+          return cachedValue;
+        },
+        [_setValue]: function(newValue: TNewWriteState) {
+          originalToken[_setValue](convertWrite(newValue));
+        },
+        [_subscribe]: function(listener: TokenValueListener<TNewReadState>) {
+          return addSubscription(subscriptions, listener);
+        },
+      },
+      dispose: disposeSubscription,
+    });
+  };
+}
+
+function addSubscription<TState>(
+  subscriptions: Map<TokenValueListener<TState>, number>,
+  callback: TokenValueListener<TState>
+) {
+  let unsubscribed = false;
+  const count = subscriptions.get(callback) ?? 0;
+  subscriptions.set(callback, count + 1);
+  return () => {
+    if (unsubscribed) return;
+    unsubscribed = true;
+    const count = subscriptions.get(callback) ?? 0;
+    if (count <= 1) {
+      subscriptions.delete(callback);
+    } else {
+      subscriptions.set(callback, count - 1);
+    }
+  };
+}
+
+function notifySubscribers<TState>(
+  subscriptions: Map<TokenValueListener<TState>, number>,
+  newValue: TState,
+  path: string
+) {
+  Array.from(subscriptions.keys()).forEach(listener =>
+    listener(newValue, path)
+  );
+}
+
+export function getTokenValue<TState>(
+  token: PartialToken<State<TState, unknown>>
+) {
   return token[_getValue]();
 }
 
 export function setTokenValue<TState>(
-  token: PartialToken<WriteState<TState>>,
+  token: PartialToken<State<unknown, TState>>,
   newValue: TState
-) {
-  return token[_setValue](newValue);
+): void {
+  token[_setValue](newValue);
 }
 
 export function subscribeToTokenValue<TState>(
-  token: PartialToken<ReadState<TState>>,
+  token: PartialToken<State<TState, unknown>>,
   listener: TokenValueListener<TState>
 ): Disposer {
   return token[_subscribe](listener);
@@ -139,25 +201,24 @@ export function subscribeToTokenValue<TState>(
 // React API
 ////////////////
 export function useStateToken<T>(initializer: T | (() => T)): Token<State<T>> {
-  const token = useToken();
-  const stateToken = useTokenExtension(token, () => {
+  return useToken(builder => {
     var initialValue: T =
       typeof initializer === 'function'
         ? (initializer as Function)()
         : initializer;
-    return addState(initialValue);
+
+    return builder.extend(addPath()).extend(addState(initialValue));
   });
-  return stateToken;
 }
 
 export function useTokenValue<TState>(
-  token: PartialToken<ReadState<TState>>
+  token: PartialToken<State<TState, unknown>>
 ): TState;
 export function useTokenValue<TState>(
-  token: PartialToken<ReadState<TState>> | undefined
+  token: PartialToken<State<TState, unknown>> | undefined
 ): TState | undefined;
 export function useTokenValue<TState>(
-  token: PartialToken<ReadState<TState>> | undefined
+  token: PartialToken<State<TState, unknown>> | undefined
 ): TState | undefined {
   const [value, setValue] = useState<TState | undefined>(
     token ? getTokenValue(token) : undefined
@@ -170,30 +231,26 @@ export function useTokenValue<TState>(
 }
 
 export function useTokenSetter<TState>(
-  token: PartialToken<WriteState<TState>>
+  token: PartialToken<State<unknown, TState>>
 ): Dispatch<TState>;
 export function useTokenSetter<TState>(
-  token: PartialToken<WriteState<TState>> | undefined
+  token: PartialToken<State<unknown, TState>> | undefined
 ): Dispatch<TState> | undefined;
 export function useTokenSetter<TState>(
-  token: PartialToken<WriteState<TState>> | undefined
+  token: PartialToken<State<unknown, TState>> | undefined
 ): Dispatch<TState> | undefined {
   if (!token) return;
   return value => setTokenValue(token, value);
 }
 
 export function useTokenState<TReadState, TWriteState = TReadState>(
-  token: PartialToken<ReadState<TReadState> & WriteState<TWriteState>>
+  token: PartialToken<State<TReadState, TWriteState>>
 ): [TReadState, Dispatch<TWriteState>];
 export function useTokenState<TReadState, TWriteState = TReadState>(
-  token:
-    | PartialToken<ReadState<TReadState> & WriteState<TWriteState>>
-    | undefined
+  token: PartialToken<State<TReadState, TWriteState>> | undefined
 ): [TReadState | undefined, Dispatch<TWriteState> | undefined];
 export function useTokenState<TReadState, TWriteState = TReadState>(
-  token:
-    | PartialToken<ReadState<TReadState> & WriteState<TWriteState>>
-    | undefined
+  token: PartialToken<State<TReadState, TWriteState>> | undefined
 ): [TReadState | undefined, Dispatch<TWriteState> | undefined] {
   return [useTokenValue(token), useTokenSetter(token)];
 }

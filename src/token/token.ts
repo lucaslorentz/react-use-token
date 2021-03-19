@@ -1,33 +1,42 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { IfNever } from '../utils/types';
+import {
+  AnyFeature,
+  ChildFeatures,
+  CleanupFeatures,
+  FeaturesPayload,
+  FeaturesTransformation,
+  NoFeature,
+  TransformFeatures,
+} from './feature';
 
-const _children = Symbol('children');
-const _childrenInterceptor = Symbol('childrenInterceptor');
-export const _metadata = Symbol('metadata');
+export const _children = Symbol('children');
+export const _childrenExtension = Symbol('childrenExtension');
+export const _dispose = Symbol('dispose');
 const _proxy = Symbol('proxy');
 const _target = Symbol('target');
 
-interface TokenBase {
-  [_children]?: Record<PropertyKey, any>;
-  [_childrenInterceptor]: ChildTokenInterceptor;
+export interface TokenBase {
+  [_children]: Record<PropertyKey, any>;
+  [_childrenExtension]: ChildTokenExtension<NoFeature, any>;
+  [_dispose]: () => void;
 }
 
-export interface NoFeature {}
+export type PartialToken<Features extends AnyFeature> = TokenBase &
+  IfNever<Features, unknown, FeaturesPayload<Features>>;
 
-export type PartialToken<Features> = TokenBase &
-  Omit<Features, typeof _metadata>;
-
-export type Token<Features> = PartialToken<Features> &
+export type Token<Features extends AnyFeature> = PartialToken<Features> &
   ChildTokensProperties<Features>;
 
-type ChildTokensProperties<Features> = {
-  readonly [k in keyof ChildFeaturesProperties<Features>]: Token<
-    CleanupFeatures<ChildFeaturesProperties<Features>[k]>
+export type ChildTokensProperties<Features extends AnyFeature> = {
+  readonly [k in keyof ChildFeatures<Features>]: Token<
+    CleanupFeatures<ChildFeatures<Features>[k]>
   >;
 };
 
 const positiveIntegerRegex = /^\d+$/;
 
-const proxyHandler: ProxyHandler<any> = {
+const proxyHandler: ProxyHandler<TokenBase> = {
   get(target, property, receiver) {
     // Special property to retrieve proxy target
     if (property === _target) {
@@ -38,91 +47,34 @@ const proxyHandler: ProxyHandler<any> = {
       return Reflect.get(target, property, receiver);
     }
     // For some reason proxies properties are string even when accessed with proxy[n];
-    if (typeof property === 'string' && positiveIntegerRegex.test(property)) {
-      property = parseInt(property);
-    }
-    // Create field to track child tokens
-    if (!target.hasOwnProperty(_children)) {
-      target[_children] = {};
-    }
+    let convertedProperty =
+      typeof property === 'string' && positiveIntegerRegex.test(property)
+        ? parseInt(property)
+        : property;
     // Reuse existing child token
-    let childToken = target[_children]![property as any];
+    let childToken = target[_children]![convertedProperty as any];
     if (!childToken) {
       // Create new child token
-      childToken = target[_childrenInterceptor]!(
-        createToken(),
-        target,
-        property
-      );
-      target[_children]![property] = childToken;
+      childToken = new TokenBuilder()
+        .extend(builder =>
+          target[_childrenExtension](builder, target, convertedProperty)
+        )
+        .build();
+      target[_children]![convertedProperty as any] = childToken;
     }
     return childToken;
   },
 };
 
-const rootToken = toProxy<NoFeature>({
-  [_childrenInterceptor]: token => token,
-});
-
-export function createToken(): Token<NoFeature>;
-export function createToken<Feature>(
-  extension?: TokenExtension<NoFeature, Feature>
-): Token<CleanupFeatures<NoFeature & Feature>>;
-export function createToken<Feature>(
-  extension?: TokenExtension<NoFeature, Feature>
-): Token<NoFeature> | Token<CleanupFeatures<NoFeature & Feature>> {
-  if (!extension) {
-    return rootToken;
-  }
-  return extendToken(rootToken, extension);
-}
-
-export function extendToken<
-  CurrentFeatures extends BaseFeature,
-  BaseFeature,
-  NewFature
->(
-  token: Token<CurrentFeatures>,
-  extension: TokenExtension<BaseFeature, NewFature>
-): Token<CleanupFeatures<CurrentFeatures & NewFature>> {
-  if (typeof extension === 'function') {
-    return extension(token) as any;
-  }
-
-  const newToken = Object.create(getProxyTarget(token));
-  Object.assign(newToken, extension.extend);
-
-  const extendChildren = extension.extendChildren;
-  if (extendChildren) {
-    const interceptor = token[_childrenInterceptor];
-    if (typeof extendChildren === 'function') {
-      newToken[_childrenInterceptor] = ((token, parentToken, property) => {
-        const childToken = interceptor(token, parentToken, property);
-        return extendToken(childToken, {
-          extend: extendChildren(childToken, parentToken, property),
-          extendChildren: extendChildren,
-        });
-      }) as ChildTokenInterceptor;
-    } else {
-      newToken[_childrenInterceptor] = ((token, parent, property) => {
-        const childToken = interceptor(token, parent, property);
-        return extendToken(childToken, {
-          extend: extension.extend,
-          extendChildren: extendChildren,
-        });
-      }) as ChildTokenInterceptor;
-    }
-  }
-  return toProxy(newToken) as any;
-}
-
-export function restoreToken<Features>(
+export function restoreToken<Features extends AnyFeature>(
   partialToken: PartialToken<Features>
 ): Token<Features> {
   return toProxy(partialToken);
 }
 
-function toProxy<Features>(token: PartialToken<Features>): Token<Features> {
+function toProxy<Features extends AnyFeature>(
+  token: PartialToken<Features>
+): Token<Features> {
   if (token.hasOwnProperty(_proxy)) {
     return (token as any)[_proxy];
   }
@@ -135,143 +87,217 @@ function toProxy<Features>(token: PartialToken<Features>): Token<Features> {
   return proxy as any;
 }
 
-function getProxyTarget<Features>(
+export function getProxyTarget<Features extends AnyFeature>(
   tokenProxy: PartialToken<Features>
-): TokenBase & Features {
+): PartialToken<Features> {
   return (tokenProxy as any)[_target];
 }
 
-export type TokenExtension<BaseFeatures, NewFeatures> =
-  | {
-      extend: Omit<PartialToken<NewFeatures>, keyof PartialToken<BaseFeatures>>;
-      extendChildren?:
-        | boolean
-        | ((
-            token: Token<BaseFeatures>,
-            parentToken: Token<BaseFeatures & NewFeatures>,
-            property: PropertyKey
-          ) => Omit<
-            PartialToken<NewFeatures>,
-            keyof PartialToken<BaseFeatures>
-          >);
-    }
-  | ((
-      token: Token<BaseFeatures>
-    ) => Token<CleanupFeatures<BaseFeatures & NewFeatures>>);
-
-export type FeatureMetadata<
-  UniqueIdentifier extends string,
-  Self,
-  BaseFeatures,
-  ChildFeatures
-> = {
-  self: BaseFeatures extends { [K in typeof _metadata]?: { self: infer S } }
-    ? S & { [U in UniqueIdentifier]?: Self }
-    : { [U in UniqueIdentifier]?: Self };
-  baseFeatures: BaseFeatures extends {
-    [K in typeof _metadata]?: { baseFeatures: infer B };
-  }
-    ? B & { [U in UniqueIdentifier]?: BaseFeatures }
-    : { [U in UniqueIdentifier]?: BaseFeatures };
-  childFeatures: BaseFeatures extends {
-    [K in typeof _metadata]?: { childFeatures: infer C };
-  }
-    ? C & { [U in UniqueIdentifier]?: ChildFeatures }
-    : { [U in UniqueIdentifier]?: ChildFeatures };
-};
-
-type GetIdentifiers<Features> = Features extends {
-  [K in typeof _metadata]?: {
-    self: infer T;
-  };
+export interface TokenExtension<
+  Features extends AnyFeature,
+  Transformations extends FeaturesTransformation = {}
+> {
+  (builder: TokenBuilder<Features>): TokenBuilder<any, Transformations>;
 }
-  ? keyof T
-  : never;
 
-type GetNonBaseIdentifiers<Features> = Exclude<
-  GetIdentifiers<Features>,
-  GetIdentifiers<GetBaseFeatures<Features>>
->;
+interface ChildTokenExtension<
+  FeaturesBefore extends AnyFeature,
+  FeaturesAfter extends AnyFeature
+> {
+  (
+    token: TokenBuilder<FeaturesBefore>,
+    parentToken: Token<FeaturesAfter>,
+    property: PropertyKey
+  ): TokenBuilder<FeaturesAfter>;
+}
 
-type GetBaseFeatures<Features> = UnionToIntersection<
-  Features extends {
-    [C in typeof _metadata]?: {
-      baseFeatures: {
-        [U in string]?: infer Base;
-      };
-    };
-  }
-    ? Base
-    : never
->;
-
-type CleanupFeatures<Features> = UnionToIntersection<
-  Features extends {
-    [C in typeof _metadata]?: {
-      self: {
-        [U in GetNonBaseIdentifiers<Features>]?: infer Self;
-      };
-    };
-  }
-    ? Self
-    : never
->;
-
-type ChildFeaturesProperties<Features> = UnionToIntersection<
-  Features extends {
-    [K in typeof _metadata]?: {
-      childFeatures: {
-        [U in string]?: infer T;
-      };
-    };
-  }
-    ? T
-    : never
->;
-
-type ChildTokenInterceptor = (
-  token: any,
-  parentToken: any,
-  property: PropertyKey
-) => any;
-
-// https://fettblog.eu/typescript-union-to-intersection/
-type UnionToIntersection<T> = (T extends any
-? (x: T) => any
-: never) extends (x: infer R) => any
-  ? R
-  : never;
+export function disposeToken(token: PartialToken<never>): void {
+  token[_dispose]();
+}
 
 ////////////////
 // React API
 ////////////////
 export function useToken(): Token<NoFeature>;
-export function useToken<Feature>(
-  extensionFactory?: () => TokenExtension<NoFeature, Feature>
-): Token<Feature>;
-export function useToken<Feature>(
-  extensionFactory?: () => TokenExtension<NoFeature, Feature>
-): Token<NoFeature> | Token<CleanupFeatures<NoFeature & Feature>> {
+export function useToken<Transformations extends FeaturesTransformation>(
+  extension: TokenExtension<NoFeature, Transformations>
+): Token<TransformFeatures<NoFeature, Transformations>>;
+export function useToken(extension?: any): any {
   const [token] = useState(() => {
-    return createToken(extensionFactory?.());
+    let builder: TokenBuilder<NoFeature, any> = new TokenBuilder();
+    if (extension) {
+      builder = builder.extend(extension);
+    }
+    return builder.build();
   });
+  useEffect(() => () => disposeToken(token), [token]);
   return token;
 }
 
 export function useTokenExtension<
-  CurrentFeatures extends BaseFeatures,
-  NewFeatures,
-  BaseFeatures = CurrentFeatures
+  Features extends BaseFeatures,
+  BaseFeatures extends AnyFeature = Features,
+  Transformations extends FeaturesTransformation = {}
 >(
-  token: Token<CurrentFeatures>,
-  extensionFactory: () => TokenExtension<BaseFeatures, NewFeatures>
-): Token<
-  NewFeatures extends CurrentFeatures
-    ? NewFeatures
-    : CurrentFeatures & NewFeatures
-> {
+  token: Token<Features>,
+  extension: TokenExtension<BaseFeatures, Transformations>
+): Token<TransformFeatures<Features, Transformations>> {
   const [newToken] = useState(() => {
-    return extendToken(token, extensionFactory());
+    return new TokenBuilder(token).extend(extension as any).build();
   });
+  useEffect(() => () => disposeToken(newToken), [newToken]);
   return newToken as any;
+}
+
+export class TokenBuilder<
+  Features extends AnyFeature = NoFeature,
+  Transformations extends FeaturesTransformation = {}
+> {
+  private partialToken: PartialToken<Features>;
+
+  constructor(baseToken?: Token<Features>) {
+    this.partialToken = Object.create(
+      baseToken ? getProxyTarget(baseToken) : Object.prototype
+    );
+
+    if (!baseToken) {
+      Object.assign(this.partialToken, {
+        [_childrenExtension]: (token => token) as ChildTokenExtension<
+          NoFeature,
+          NoFeature
+        >,
+      });
+    }
+
+    Object.assign(this.partialToken, {
+      [_children]: {},
+      [_dispose]: () => {},
+    });
+  }
+
+  public replaceFeature<
+    OldFeatures extends AnyFeature,
+    NewFeatures extends AnyFeature
+  >(
+    featureDescription: FeatureDescription<Features, NewFeatures>
+  ): TokenBuilder<
+    TransformFeatures<
+      Features,
+      {
+        remove: OldFeatures;
+        add: NewFeatures;
+      }
+    >,
+    Transformations & {
+      remove: OldFeatures;
+      add: NewFeatures;
+    }
+  > {
+    return this.addFeature<NewFeatures>(featureDescription) as any;
+  }
+
+  public addFeature<NewFeatures extends AnyFeature>(
+    featureDescription: FeatureDescription<Features, NewFeatures>
+  ): TokenBuilder<
+    TransformFeatures<
+      Features,
+      {
+        add: NewFeatures;
+      }
+    >,
+    Transformations & {
+      add: NewFeatures;
+    }
+  > {
+    const { extend, extendChildren, dispose } = featureDescription;
+
+    this.partialToken = Object.create(this.partialToken);
+
+    if (extend) {
+      Object.assign(this.partialToken, extend);
+    }
+
+    if (extendChildren) {
+      const interceptor = this.partialToken[_childrenExtension];
+      if (typeof extendChildren === 'function') {
+        this.partialToken[_childrenExtension] = (
+          childTokenBuilder,
+          parentToken,
+          property
+        ) => {
+          return interceptor(
+            childTokenBuilder,
+            parentToken,
+            property
+          ).addFeature({
+            extend: extendChildren(
+              childTokenBuilder.partialToken as any,
+              parentToken as any,
+              property
+            ),
+            extendChildren: extendChildren as any,
+          });
+        };
+      } else {
+        this.partialToken[_childrenExtension] = (
+          childTokenBuilder,
+          parent,
+          property
+        ) => {
+          return interceptor(childTokenBuilder, parent, property).addFeature({
+            extend: extend,
+            extendChildren: extendChildren,
+          });
+        };
+      }
+    }
+
+    if (dispose) {
+      const previousDispose = this.partialToken[_dispose];
+      Object.assign(this.partialToken, {
+        [_dispose]: () => {
+          previousDispose();
+          dispose();
+        },
+      });
+    }
+
+    return this as any;
+  }
+
+  public extend<
+    BaseFeatures extends AnyFeature = Features,
+    NewTransformations extends FeaturesTransformation = {}
+  >(
+    extension: TokenExtension<BaseFeatures, NewTransformations>
+  ): TokenBuilder<
+    TransformFeatures<Features, NewTransformations>,
+    Transformations & NewTransformations
+  > {
+    extension(this as any);
+    return this as any;
+  }
+
+  public peek(): PartialToken<Features> {
+    return this.partialToken;
+  }
+
+  public build(): Token<Features> {
+    return restoreToken(this.partialToken);
+  }
+}
+
+export interface FeatureDescription<
+  BaseFeatures extends AnyFeature,
+  NewFeature extends AnyFeature
+> {
+  extend: Omit<NewFeature['payload'], keyof BaseFeatures['payload']>;
+  extendChildren?:
+    | boolean
+    | ((
+        childToken: PartialToken<BaseFeatures>,
+        parentToken: Token<NewFeature>,
+        property: PropertyKey
+      ) => Omit<NewFeature['payload'], keyof BaseFeatures['payload']>);
+  dispose?: () => void;
 }

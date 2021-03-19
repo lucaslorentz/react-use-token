@@ -1,12 +1,13 @@
 import { act, renderHook } from '@testing-library/react-hooks';
 import { expectTypeOf } from 'expect-type';
-import { PartialToken, Token } from '../token';
+import { PartialToken, Token, useTokenExtension } from '../token';
 import {
-  ReadState,
+  transformState,
+  setTokenValue,
+  State,
   useStateToken,
   useTokenSetter,
   useTokenValue,
-  WriteState,
 } from './state';
 
 describe('state', () => {
@@ -63,46 +64,86 @@ describe('state', () => {
     expect(result.current.children_0_name).toBe('Changed name');
   });
 
+  it('should support state transformation', () => {
+    const initialValue = 42;
+
+    const { result: useStateTokenResult } = renderHook(() =>
+      useStateToken(() => initialValue)
+    );
+
+    const token = useStateTokenResult.current;
+
+    const { result: transformedStateTokenResult } = renderHook(() =>
+      useTokenExtension(token, b =>
+        b.extend(
+          transformState<number, string>(
+            v => v.toString(),
+            s => parseFloat(s)
+          )
+        )
+      )
+    );
+
+    const transformedToken = transformedStateTokenResult.current;
+
+    const { result } = renderHook(() => {
+      return {
+        originalValue: useTokenValue(token),
+        transformedValue: useTokenValue(transformedToken),
+      };
+    });
+
+    expect(result.current.originalValue).toBe(initialValue);
+    expectTypeOf(result.current.originalValue).toEqualTypeOf<number>();
+
+    expect(result.current.transformedValue).toBe('42');
+    expectTypeOf(result.current.transformedValue).toEqualTypeOf<string>();
+
+    act(() => setTokenValue(transformedToken, '11'));
+
+    expect(result.current.originalValue).toBe(11);
+    expectTypeOf(result.current.originalValue).toEqualTypeOf<number>();
+
+    expect(result.current.transformedValue).toBe('11');
+    expectTypeOf(result.current.transformedValue).toEqualTypeOf<string>();
+  });
+
   describe('types', () => {
     it('token should not be assignable to pure feature', () => {
-      expectTypeOf<Token<ReadState<string>>>().not.toMatchTypeOf<
-        ReadState<string>
-      >();
+      expectTypeOf<Token<State<string>>>().not.toMatchTypeOf<State<string>>();
     });
 
     it('state of any should not assignable to states of string', () => {
-      expectTypeOf<Token<ReadState<any>>>().not.toMatchTypeOf<
-        Token<ReadState<string>>
+      expectTypeOf<Token<State<any>>>().not.toMatchTypeOf<
+        Token<State<string>>
       >();
     });
 
-    it('state of any should be assignable state of string using partial token', () => {
-      expectTypeOf<Token<ReadState<any>>>().toMatchTypeOf<
-        PartialToken<ReadState<string>>
+    it('state of any should be assignable to state of string using partial token', () => {
+      expectTypeOf<Token<State<any>>>().toMatchTypeOf<
+        PartialToken<State<string>>
       >();
     });
 
-    it('state of string should should be assignable to state of any', () => {
-      expectTypeOf<Token<ReadState<string>>>().not.toMatchTypeOf<
-        Token<ReadState<any>>
+    it('state of string should be assignable to state of any', () => {
+      expectTypeOf<Token<State<string>>>().toMatchTypeOf<Token<State<any>>>();
+    });
+
+    it('state of string should be assignable to state of any using partial token', () => {
+      expectTypeOf<Token<State<string>>>().toMatchTypeOf<
+        PartialToken<State<any>>
       >();
     });
 
-    it('state of string should should be assignable to state of any using partial token', () => {
-      expectTypeOf<Token<ReadState<string>>>().toMatchTypeOf<
-        PartialToken<ReadState<any>>
+    it('read write token should be assignable to read only', () => {
+      expectTypeOf<Token<State<string>>>().toMatchTypeOf<
+        Token<State<string, never>>
       >();
-    });
-
-    it('read write token should be assignable to read', () => {
-      expectTypeOf<
-        Token<ReadState<string> & WriteState<string>>
-      >().toMatchTypeOf<Token<ReadState<string>>>();
     });
 
     it('single type state should be assignable to multi type', () => {
-      expectTypeOf<Token<ReadState<string>>>().toMatchTypeOf<
-        Token<ReadState<string | undefined>>
+      expectTypeOf<Token<State<string>>>().toMatchTypeOf<
+        Token<State<string | undefined>>
       >();
     });
   });

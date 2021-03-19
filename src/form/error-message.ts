@@ -1,56 +1,64 @@
 import { getTokenPath, Path } from '../path';
-import { getTokenValue, ReadState, useTokenValue } from '../state';
-import {
-  extendToken,
-  FeatureMetadata,
-  NoFeature,
-  PartialToken,
-  Token,
-  TokenExtension,
-  _metadata,
-} from '../token';
+import { getTokenValue, setTokenValue, State, useTokenValue } from '../state';
+import { FeatureBase, PartialToken, Token, TokenExtension } from '../token';
 
 const _errorToken = Symbol('errorToken');
+const _showAllErrors = Symbol('showAllErrors');
 
-export interface ErrorsState {
+export interface ErrorMessages {
   [path: string]: string;
 }
 
-export interface ErrorMessage {
-  readonly [_errorToken]: PartialToken<ReadState<string>>;
-  [_metadata]: FeatureMetadata<
-    'error',
-    ErrorMessage,
-    NoFeature,
-    {
-      [P in PropertyKey]: ErrorMessage;
-    }
-  >;
+export interface ErrorMessage
+  extends FeatureBase<'ErrorMessage', ErrorMessage> {
+  payload: {
+    readonly [_errorToken]: PartialToken<State<string, unknown>>;
+    readonly [_showAllErrors]: PartialToken<State<boolean>>;
+  };
+  childFeatures: {
+    [P in PropertyKey]: ErrorMessage;
+  };
 }
 
 export interface ErrorOptions {
-  errorsToken: Token<ReadState<ErrorsState>>;
+  errorsToken: Token<State<ErrorMessages, unknown>>;
+  showAllErrorsToken: Token<State<boolean>>;
 }
 
 export function addErrorMessages(
   options: ErrorOptions
-): TokenExtension<Path, ErrorMessage> {
-  const { errorsToken } = options;
-  return token =>
-    extendToken(token, {
+): TokenExtension<Path, { add: ErrorMessage }> {
+  const { errorsToken, showAllErrorsToken } = options;
+  return builder => {
+    const tokenBefore = builder.peek();
+    return builder.addFeature<ErrorMessage>({
       extend: {
-        [_errorToken]: errorsToken[getTokenPath(token)],
+        [_errorToken]: errorsToken[getTokenPath(tokenBefore)],
+        [_showAllErrors]: showAllErrorsToken,
       },
       extendChildren: childToken => ({
         [_errorToken]: errorsToken[getTokenPath(childToken)],
+        [_showAllErrors]: showAllErrorsToken,
       }),
-    } as TokenExtension<Path, ErrorMessage>);
+    });
+  };
 }
 
 export function getTokenErrorMessage(
   token: PartialToken<ErrorMessage>
 ): string | undefined {
   return getTokenValue(token[_errorToken]);
+}
+
+export function getShowAllErrors(token: PartialToken<ErrorMessage>): boolean {
+  return getTokenValue(token[_showAllErrors]);
+}
+
+export function setShowAllErrors(
+  token: PartialToken<ErrorMessage>,
+  value: boolean
+): void {
+  setTokenValue(token[_showAllErrors], value);
 }
 
 ////////////////

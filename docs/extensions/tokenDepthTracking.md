@@ -7,17 +7,15 @@
 const _depth = Symbol('depth');
 
 // Declare token feature
-export interface Depth {
-  // Declare hidden fields
-  [_depth]: number;
-
-  // Declare child features
-  [_metadata]: FeatureMetadata<
-    'depth', // Unique identifier
-    Depth, // Self type
-    NoFeature, // Features to hide
-    { [P in PropertyKey]: Depth } // Map with all possible child properties and it's feature
-  >;
+export interface Depth extends FeatureBase<'Depth', Depth> {
+  payload: {
+    // Declare payload data
+    readonly [_depth]: number;
+  };
+  childFeatures: {
+    // Declare child features
+    [P in PropertyKey]: Depth;
+  };
 }
 
 // Implement extension

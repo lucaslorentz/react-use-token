@@ -1,47 +1,39 @@
 import { useMemo } from 'react';
-import { reach, SchemaOf } from 'yup';
-import {
-  FeatureMetadata,
-  NoFeature,
-  PartialToken,
-  TokenExtension,
-  _metadata,
-} from '../token';
-import { NonFunctionProperties } from '../utils/types';
+import { AnySchema, reach } from 'yup';
+import { FeatureBase, NoFeature, PartialToken, TokenExtension } from '../token';
 
 const _schema = Symbol('schema');
 
-export interface Schema<TState> {
-  readonly [_schema]: SchemaOf<TState>;
-  [_metadata]: FeatureMetadata<
-    'schema',
-    Schema<TState>,
-    NoFeature,
-    {
-      [P in keyof NonFunctionProperties<NonNullable<TState>>]-?: Schema<
-        NonNullable<TState>[P]
-      >;
-    }
-  >;
-}
-
-export function addSchema<TState>(
-  schema: SchemaOf<TState>
-): TokenExtension<NoFeature, Schema<TState>> {
-  return {
-    extend: {
-      [_schema]: schema,
-    },
-    extendChildren: (_, parent, property) => {
-      const childSchema = tryReach(parent[_schema], String(property));
-      return {
-        [_schema]: childSchema,
-      };
-    },
+export interface Schema extends FeatureBase<'Schema', Schema> {
+  payload: {
+    readonly [_schema]: AnySchema;
+  };
+  childFeatures: {
+    [P in PropertyKey]: Schema;
   };
 }
 
-export function getTokenSchema<T>(token: PartialToken<Schema<T>>): SchemaOf<T> {
+export function addSchema(
+  schema: AnySchema
+): TokenExtension<NoFeature, { add: Schema }> {
+  return builder =>
+    builder.addFeature<Schema>({
+      extend: {
+        [_schema]: schema as any,
+      },
+      extendChildren: (_, parent, property) => {
+        const parentSchema = getTokenSchema(parent);
+        const childSchema = parentSchema
+          ? tryReach(parentSchema, String(property))
+          : undefined;
+        return {
+          [_schema]: childSchema,
+        };
+      },
+    });
+}
+
+export function getTokenSchema(token: PartialToken<Schema>): AnySchema {
   return token[_schema];
 }
 
@@ -62,7 +54,7 @@ export interface SchemaInfo {
 // React API
 ////////////////
 export function useTokenSchemaInfo(
-  token: PartialToken<Schema<any>> | undefined
+  token: PartialToken<Schema> | undefined
 ): SchemaInfo {
   const schemaDescription = useMemo(() => {
     if (!token) return;

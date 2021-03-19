@@ -2,24 +2,21 @@ import { addPath, Path } from '../path';
 import {
   addState,
   getTokenValue,
-  ReadState,
   setTokenValue,
+  State,
   subscribeToTokenValue,
   useTokenValue,
-  WriteState,
 } from '../state';
 import {
-  createToken,
-  extendToken,
-  FeatureMetadata,
-  NoFeature,
+  FeatureBase,
   PartialToken,
   Token,
+  TokenBuilder,
   TokenExtension,
-  _metadata,
 } from '../token';
 import { debounce } from '../utils/debounce';
-import { addErrorMessages, ErrorMessage, ErrorsState } from './error-message';
+import { addErrorMessages, ErrorMessage, ErrorMessages } from './error-message';
+import { TouchedFieldsState, addTouched, TouchedInfo } from './touched';
 
 export type ValidationStatusValues =
   | 'pending'
@@ -29,63 +26,76 @@ export type ValidationStatusValues =
 
 const _validationStatusToken = Symbol('validationStatusToken');
 
-export interface ValidationStatus {
-  readonly [_validationStatusToken]: Token<
-    ReadState<ValidationStatusValues> & WriteState<ValidationStatusValues>
-  >;
-  [_metadata]: FeatureMetadata<
-    'validationStatus',
-    ValidationStatusValues,
-    NoFeature,
-    {
-      [P in PropertyKey]: ValidationStatusValues;
-    }
-  >;
+export interface ValidationStatus
+  extends FeatureBase<'ValidationStatus', ValidationStatus> {
+  payload: {
+    readonly [_validationStatusToken]: Token<State<ValidationStatusValues>>;
+  };
+  childFeatures: {
+    [P in PropertyKey]: ValidationStatus;
+  };
 }
 
-export interface Validated extends Path, ErrorMessage, ValidationStatus {
-  readonly [_validationStatusToken]: Token<
-    ReadState<ValidationStatusValues> & WriteState<ValidationStatusValues>
-  >;
-  [_metadata]: FeatureMetadata<
-    'validation',
-    Validated,
-    Path & ErrorMessage & ValidationStatus,
-    {
-      [P in PropertyKey]: Validated;
-    }
-  >;
+export interface Validated extends FeatureBase<'Validated', Validated> {
+  payload: Path['payload'] &
+    ErrorMessage['payload'] &
+    TouchedInfo['payload'] &
+    ValidationStatus['payload'] & {
+      readonly [_validationStatusToken]: Token<State<ValidationStatusValues>>;
+    };
+  baseFeatures: Path & ErrorMessage & TouchedInfo & ValidationStatus;
+  childFeatures: {
+    [P in PropertyKey]: Validated;
+  };
 }
 
 export type StateValidator<TState> = (
   value: TState | undefined
-) => Promise<ErrorsState>;
+) => Promise<ErrorMessages>;
 
 export interface ValidationOptions<TState> {
   validator: StateValidator<TState>;
   debounceMs?: number;
 }
 
-export function addValidation<TState>(
-  options: ValidationOptions<TState>
-): TokenExtension<ReadState<TState>, Path & ErrorMessage & Validated> {
+export function addValidation<TReadState, TWriteState>(
+  options: ValidationOptions<TReadState>
+): TokenExtension<
+  State<TReadState, TWriteState>,
+  { add: ErrorMessage & Validated }
+> {
   const { validator, debounceMs = 200 } = options;
 
-  return token => {
-    const errorsToken = createToken(addState<ErrorsState>({}));
+  return builder => {
+    const errorsToken = new TokenBuilder()
+      .extend(addPath())
+      .extend(addState<ErrorMessages>({}))
+      .build();
 
-    const validationStatusToken = createToken(
-      addState<ValidationStatusValues>('pending')
-    );
+    const showAllErrorsToken = new TokenBuilder()
+      .extend(addPath())
+      .extend(addState<boolean>(false))
+      .build();
 
-    let lastValidationVersion = 0;
+    const validationStatusToken = new TokenBuilder()
+      .extend(addPath())
+      .extend(addState<ValidationStatusValues>('pending'))
+      .build();
+
+    const touchedFieldsToken = new TokenBuilder()
+      .extend(addPath())
+      .extend(addState<TouchedFieldsState>({}))
+      .build();
+
+    let lastStateVersion = 0;
+    let pendingTouched: Record<string, boolean> = {};
 
     const debouncedValidate = debounce(
-      async (newValue: TState, version: number) => {
+      async (newValue: TReadState, version: number) => {
         setTokenValue(validationStatusToken, 'validating');
         const errors = await validator(newValue);
 
-        if (lastValidationVersion !== version) return;
+        if (lastStateVersion !== version) return;
 
         if (process.env.NODE_ENV !== 'production') {
           console.info('Validation errors:', errors);
@@ -96,34 +106,49 @@ export function addValidation<TState>(
           validationStatusToken,
           Object.keys(errors).length === 0 ? 'valid' : 'invalid'
         );
+        setTokenValue(touchedFieldsToken, {
+          ...getTokenValue(touchedFieldsToken),
+          ...pendingTouched,
+        });
       },
       debounceMs
     );
 
-    subscribeToTokenValue(token, async newValue => {
-      setTokenValue(validationStatusToken, 'pending');
-      lastValidationVersion++;
-      debouncedValidate(newValue, lastValidationVersion);
-    });
+    const tokenBefore = builder.peek();
 
-    const tokenWithPath = extendToken(token, addPath());
-    const tokenWithErrrors = extendToken(
-      tokenWithPath,
-      addErrorMessages({
-        errorsToken: errorsToken,
-      })
+    const disposeSubscription = subscribeToTokenValue(
+      tokenBefore,
+      async (newValue, path) => {
+        setTokenValue(validationStatusToken, 'pending');
+        lastStateVersion++;
+        pendingTouched[path] = true;
+        debouncedValidate(newValue, lastStateVersion);
+      }
     );
 
-    const tokenWithValidationStatus = extendToken(tokenWithErrrors, {
-      extend: {
-        [_validationStatusToken]: validationStatusToken,
-      },
-      extendChildren: true,
-    } as TokenExtension<ErrorMessage, Validated>);
+    debouncedValidate(getTokenValue(tokenBefore), lastStateVersion);
 
-    debouncedValidate(getTokenValue(token), lastValidationVersion);
-
-    return tokenWithValidationStatus;
+    return builder
+      .extend(
+        addErrorMessages({
+          errorsToken: errorsToken,
+          showAllErrorsToken: showAllErrorsToken,
+        })
+      )
+      .extend(
+        addTouched({
+          touchedFieldsToken,
+        })
+      )
+      .addFeature<Validated>({
+        extend: {
+          [_validationStatusToken]: validationStatusToken,
+        },
+        extendChildren: true,
+        dispose: () => {
+          disposeSubscription();
+        },
+      });
   };
 }
 

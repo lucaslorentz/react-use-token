@@ -1,22 +1,26 @@
+import { addPath } from '../path';
 import { addState } from '../state';
-import { createToken, extendToken } from '../token';
+import { TokenBuilder } from '../token';
 import { getTokenErrorMessage } from './error-message';
 import { addValidation, getTokenValidationStatus } from './validation';
 
 describe('form/validation', () => {
   describe('with errors', () => {
     it('flag as invalid and return errors', async () => {
-      var token = extendToken(
-        createToken(addState<any>({})),
-        addValidation({
-          validator: async (_: any) => {
-            return {
-              name: 'Name is required',
-            };
-          },
-          debounceMs: 1,
-        })
-      );
+      var token = new TokenBuilder()
+        .extend(addPath())
+        .extend(addState<any>({}))
+        .extend(
+          addValidation({
+            validator: async (_: any) => {
+              return {
+                name: 'Name is required',
+              };
+            },
+            debounceMs: 1,
+          })
+        )
+        .build();
 
       expect(getTokenValidationStatus(token)).toBe('pending');
       expect(getTokenErrorMessage(token.name)).toBeUndefined();
@@ -30,15 +34,18 @@ describe('form/validation', () => {
 
   describe('without errors', () => {
     it("flag as valid and doesn't return errors", async () => {
-      var token = extendToken(
-        createToken(addState<any>({})),
-        addValidation({
-          validator: async (_: any) => {
-            return {};
-          },
-          debounceMs: 0,
-        })
-      );
+      var token = new TokenBuilder()
+        .extend(addPath())
+        .extend(addState<any>({}))
+        .extend(
+          addValidation({
+            validator: async (_: any) => {
+              return {};
+            },
+            debounceMs: 0,
+          })
+        )
+        .build();
 
       expect(getTokenValidationStatus(token)).toBe('pending');
       expect(getTokenErrorMessage(token.name)).toBeUndefined();
