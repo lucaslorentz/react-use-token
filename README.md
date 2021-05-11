@@ -1,4 +1,4 @@
-# react-use-token
+# react-use-token - Experimental
 
 Token based state management for react:
 
