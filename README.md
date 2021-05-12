@@ -158,7 +158,7 @@ function (token: Token<Feature1 & Feature2>) {
 }
 ```
 
-Tokens with `any` types have less child tokens available, making them not assignable to a more specific token type. Example: `Token<ReadState<any>>` is not assignable to `Token<ReadState<string>>`.
+Tokens with `any` types have less child tokens available, making them not assignable to a more specific token type. Example: `Token<State<any>>` is not assignable to `Token<State<string>>`.
 
 If you want to support `any` types, you can use `PartialToken<Feature1 & Feature2...>`, which is a more compatible token that doesn't have child token fields. You can convert `PartialToken<Features>` to `Token<Features>` by calling method `restoreToken(partialToken)`. Example:
 
